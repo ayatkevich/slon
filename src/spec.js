@@ -1,41 +1,12 @@
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, test } from '@jest/globals';
+import { readFile } from 'fs/promises';
 
 describe('SLON – Semantically-Loose Object Network', () => {
   const pg = new PGlite();
 
   beforeAll(async () => {
-    await pg.exec(/* sql */ `
-      create type "slon_object" as (
-        "left" text,
-        "right" text
-      );
-
-      create function "slon_object_constructor" (text, text) returns "slon_object" as $$
-        select row($1, $2)::"slon_object";
-      $$ language sql immutable;
-
-      create operator | (
-        leftArg = text,
-        rightArg = text,
-        function = "slon_object_constructor"
-      );
-
-      create type "slon_relation" as (
-        "parent" "slon_object",
-        "children" "slon_object"[]
-      );
-
-      create function "slon_relation_constructor" ("slon_object", "slon_object"[]) returns "slon_relation" as $$
-        select row($1, $2)::"slon_relation";
-      $$ language sql immutable;
-
-      create operator & (
-        leftArg = "slon_object",
-        rightArg = "slon_object"[],
-        function = "slon_relation_constructor"
-      );
-    `);
+    await pg.exec(await readFile('./src/slon.sql', 'utf-8'));
   });
 
   test('object', async () => {
@@ -44,9 +15,7 @@ describe('SLON – Semantically-Loose Object Network', () => {
   });
 
   test('network', async () => {
-    const {
-      rows: [{ result }],
-    } = await pg.sql`
+    const { rows } = await pg.sql`
       select to_json(
         ('A' | 'a') & array[
           ('B' | 'b'),
@@ -54,12 +23,19 @@ describe('SLON – Semantically-Loose Object Network', () => {
         ]
       ) as result
     `;
-    expect(result).toEqual({
-      parent: { left: 'A', right: 'a' },
-      children: [
-        { left: 'B', right: 'b' },
-        { left: 'C', right: 'c' },
-      ],
-    });
+    expect(rows).toEqual([
+      {
+        result: {
+          parent: { left: 'A', right: 'a' },
+          child: { left: 'B', right: 'b' },
+        },
+      },
+      {
+        result: {
+          parent: { left: 'A', right: 'a' },
+          child: { left: 'C', right: 'c' },
+        },
+      },
+    ]);
   });
 });
