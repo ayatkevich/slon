@@ -39,8 +39,7 @@ create operator & (
 create function "slon_search" ("~set" "slon_relation", "?" "slon_object") returns "slon_relation" as $$
   select *
     from (select "~set".*) as "~"
-    where ("~"."object")."left" = "?"."left"
-      and ("~"."object")."right" = "?"."right"
+    where "~"."object" = "?"
 $$ language sql immutable;
 
 create operator ? (
