@@ -35,3 +35,16 @@ create operator & (
   rightArg = "slon_object"[],
   function = "slon_relation_constructor"
 );
+
+create function "slon_search" ("~set" "slon_relation", "?" "slon_object") returns "slon_relation" as $$
+  select *
+    from (select "~set".*) as "~"
+    where ("~"."object")."left" = "?"."left"
+      and ("~"."object")."right" = "?"."right"
+$$ language sql immutable;
+
+create operator ? (
+  leftArg = "slon_relation",
+  rightArg = "slon_object",
+  function = "slon_search"
+);
