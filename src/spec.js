@@ -24,18 +24,9 @@ describe('SLON – Semantically-Loose Object Network', () => {
       ) as result
     `;
     expect(rows).toEqual([
-      {
-        result: {
-          parent: { left: 'A', right: 'a' },
-          child: { left: 'B', right: 'b' },
-        },
-      },
-      {
-        result: {
-          parent: { left: 'A', right: 'a' },
-          child: { left: 'C', right: 'c' },
-        },
-      },
+      { result: { index: 1, parent: null, object: { left: 'A', right: 'a' } } },
+      { result: { index: 2, parent: 1, object: { left: 'B', right: 'b' } } },
+      { result: { index: 3, parent: 1, object: { left: 'C', right: 'c' } } },
     ]);
   });
 });

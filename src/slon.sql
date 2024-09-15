@@ -14,13 +14,20 @@ create operator | (
 );
 
 create type "slon_relation" as (
-  "parent" "slon_object",
-  "child" "slon_object"
+  "index" int,
+  "parent" int,
+  "object" "slon_object"
 );
 
 create function "slon_relation_constructor" ("slon_object", "slon_object"[]) returns setof "slon_relation" as $$
-  select row($1, "~")::"slon_relation"
-    from unnest($2) as "~";
+  select *
+    from (
+      select row(1, null, $1)::"slon_relation" as "relation"
+      union
+      select row(row_number() over () + 1, 1, "~")::"slon_relation" as "relation"
+        from unnest($2) as "~"
+    )
+    order by ("relation")."index"
 $$ language sql immutable;
 
 create operator & (
