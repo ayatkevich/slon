@@ -182,9 +182,9 @@ SELECT (? ('trace' | ? ('program' | '*')) ? ('*' | '*')).id;
 
 ```sql
 SELECT
-    program.id AS programId,
-    trace.id AS traceId,
-    step.id AS stepId
+    program.id AS program_id,
+    trace.id AS trace_id,
+    step.id AS step_id
 FROM
     slon_query(('program' | '*')) AS program,
     slon_query(('trace' | program)) AS trace,
