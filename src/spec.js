@@ -90,5 +90,17 @@ describe('SLON – Semantically-Loose Object Network', () => {
         await pg.sql`select ('A' | '*') = ('A' | 'a') as "result"`;
       expect(rows).toEqual([{ result: true }]);
     }
+
+    special_symbol_any_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | '*') = ('B' | 'b') as "result"`;
+      expect(rows).toEqual([{ result: false }]);
+    }
+
+    special_symbol_any_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | '*') = ('*' | 'a') as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
   });
 });
