@@ -58,7 +58,7 @@ create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
   returns null on null input
 as $$
   select "slon_object_constructor" ($1."id", $2."id")
-$$ language sql immutable;
+$$ language sql volatile;
 
 create operator | (
   leftArg = text,
