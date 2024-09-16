@@ -129,7 +129,12 @@ create operator & (
 create function "slon_node_equality" ("slon_node", "slon_node")
   returns boolean
 as $$
-  select $1."effect" is not distinct from $2."effect" and $1."payload" is not distinct from $2."payload"
+  select case
+    when ($1."effect")."id" = '* | *' and $1."payload" is null then true
+    when ($2."effect")."id" = '* | *' and $2."payload" is null then true
+    else $1."effect" is not distinct from $2."effect"
+      and $1."payload" is not distinct from $2."payload"
+  end
 $$ language sql immutable;
 
 create operator = (
@@ -202,8 +207,21 @@ as $$
   select "slon_object_constructor" (@$1, (($2."node")."effect")."right")
 $$ language sql volatile;
 
+create function "slon_object_constructor" ("slon_tree", text)
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" ((($1."node")."effect")."left", @$2)
+$$ language sql volatile;
+
 create operator | (
   leftArg = text,
   rightArg = "slon_tree",
+  function = "slon_object_constructor"
+);
+
+create operator | (
+  leftArg = "slon_tree",
+  rightArg = text,
   function = "slon_object_constructor"
 );

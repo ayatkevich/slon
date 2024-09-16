@@ -1,13 +1,13 @@
-import { PGlite } from '@electric-sql/pglite';
-import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
-import { readFile } from 'fs/promises';
+import { PGlite } from "@electric-sql/pglite";
+import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
+import { readFile } from "fs/promises";
 
-describe('SLON – Semantically-Loose Object Network', () => {
+describe("SLON – Semantically-Loose Object Network", () => {
   const pg = new PGlite();
-  beforeAll(async () => pg.exec(await readFile('./src/slon.sql', 'utf-8')));
+  beforeAll(async () => pg.exec(await readFile("./src/slon.sql", "utf-8")));
   afterAll(() => pg.close());
 
-  test('symbol', async () => {
+  test("symbol", async () => {
     no_symbols_registered: {
       const { rows } = await pg.sql`select * from "slon_symbol"`;
       expect(rows).toEqual([]);
@@ -15,12 +15,12 @@ describe('SLON – Semantically-Loose Object Network', () => {
 
     add_some_symbols: {
       const { rows } = await pg.sql`select to_json(@'A') as "result"`;
-      expect(rows).toEqual([{ result: { id: 'A', index: 1 } }]);
+      expect(rows).toEqual([{ result: { id: "A", index: 1 } }]);
     }
 
     symbols_are_persisted: {
       const { rows } = await pg.sql`select * from "slon_symbol"`;
-      expect(rows).toEqual([{ id: 'A', index: 1 }]);
+      expect(rows).toEqual([{ id: "A", index: 1 }]);
     }
 
     symbol_equals_same_symbol: {
@@ -34,9 +34,8 @@ describe('SLON – Semantically-Loose Object Network', () => {
     }
 
     symbols_are_persisted_and_reused: {
-      const { rows } =
-        await pg.sql`select "id" from "slon_symbol" order by "id"`;
-      expect(rows).toEqual([{ id: 'A' }, { id: 'a' }]);
+      const { rows } = await pg.sql`select "id" from "slon_symbol" order by "id"`;
+      expect(rows).toEqual([{ id: "A" }, { id: "a" }]);
     }
 
     any_symbol_equals_special_symbol_any: {
@@ -55,16 +54,16 @@ describe('SLON – Semantically-Loose Object Network', () => {
     }
   });
 
-  test('object', async () => {
+  test("object", async () => {
     object_is_a_pair_of_symbols: {
       const { rows } = await pg.sql`select to_json(@'A' | @'a') as "result"`;
       expect(rows).toEqual([
         {
           result: {
-            id: 'A | a',
+            id: "A | a",
             index: 1,
-            left: expect.objectContaining({ id: 'A' }),
-            right: expect.objectContaining({ id: 'a' }),
+            left: expect.objectContaining({ id: "A" }),
+            right: expect.objectContaining({ id: "a" }),
           },
         },
       ]);
@@ -75,72 +74,65 @@ describe('SLON – Semantically-Loose Object Network', () => {
       expect(rows).toEqual([
         {
           result: {
-            id: 'A | a',
+            id: "A | a",
             index: 1,
-            left: expect.objectContaining({ id: 'A' }),
-            right: expect.objectContaining({ id: 'a' }),
+            left: expect.objectContaining({ id: "A" }),
+            right: expect.objectContaining({ id: "a" }),
           },
         },
       ]);
     }
 
     objects_are_persisted: {
-      const { rows } =
-        await pg.sql`select to_json("slon_object") as "result" from "slon_object"`;
+      const { rows } = await pg.sql`select to_json("slon_object") as "result" from "slon_object"`;
       expect(rows).toEqual([
         {
           result: {
-            id: 'A | a',
+            id: "A | a",
             index: 1,
-            left: expect.objectContaining({ id: 'A' }),
-            right: expect.objectContaining({ id: 'a' }),
+            left: expect.objectContaining({ id: "A" }),
+            right: expect.objectContaining({ id: "a" }),
           },
         },
       ]);
     }
 
     object_equals_same_object: {
-      const { rows } =
-        await pg.sql`select (@'A' | @'a') = ('A' | 'a') as "result"`;
+      const { rows } = await pg.sql`select (@'A' | @'a') = ('A' | 'a') as "result"`;
       expect(rows).toEqual([{ result: true }]);
     }
 
     object_does_not_equal_different_object: {
-      const { rows } =
-        await pg.sql`select (@'A' | @'a') = ('a' | 'A') as "result"`;
+      const { rows } = await pg.sql`select (@'A' | @'a') = ('a' | 'A') as "result"`;
       expect(rows).toEqual([{ result: false }]);
     }
 
     special_symbol_any_can_be_used_for_pattern_matching: {
-      const { rows } =
-        await pg.sql`select ('A' | '*') = ('A' | 'a') as "result"`;
+      const { rows } = await pg.sql`select ('A' | '*') = ('A' | 'a') as "result"`;
       expect(rows).toEqual([{ result: true }]);
     }
 
     special_symbol_any_can_be_used_for_pattern_matching: {
-      const { rows } =
-        await pg.sql`select ('A' | '*') = ('B' | 'b') as "result"`;
+      const { rows } = await pg.sql`select ('A' | '*') = ('B' | 'b') as "result"`;
       expect(rows).toEqual([{ result: false }]);
     }
 
     special_symbol_any_can_be_used_for_pattern_matching: {
-      const { rows } =
-        await pg.sql`select ('A' | '*') = ('*' | 'a') as "result"`;
+      const { rows } = await pg.sql`select ('A' | '*') = ('*' | 'a') as "result"`;
       expect(rows).toEqual([{ result: true }]);
     }
   });
 
-  test('node', async () => {
+  test("node", async () => {
     node_is_a_pair_of_objects: {
-      const { rows } =
-        await pg.sql`select to_json(('A' | 'a') & ('B' | 'b')) as "result"`;
+      const { rows } = await pg.sql`select to_json(('A' | 'a') & ('B' | 'b')) as "result"`;
       expect(rows).toEqual([
         {
           result: {
-            id: 'A | a & B | b',
+            id: "A | a & B | b",
             index: 1,
-            effect: expect.objectContaining({ id: 'A | a' }),
-            payload: expect.objectContaining({ id: 'B | b' }),
+            effect: expect.objectContaining({ id: "A | a" }),
+            payload: expect.objectContaining({ id: "B | b" }),
           },
         },
       ]);
@@ -151,9 +143,9 @@ describe('SLON – Semantically-Loose Object Network', () => {
       expect(rows).toEqual([
         {
           result: {
-            id: 'A | a & null',
+            id: "A | a & null",
             index: 2,
-            effect: expect.objectContaining({ id: 'A | a' }),
+            effect: expect.objectContaining({ id: "A | a" }),
             payload: null,
           },
         },
@@ -167,8 +159,8 @@ describe('SLON – Semantically-Loose Object Network', () => {
           order by "index"
       `;
       expect(rows).toEqual([
-        { id: 'A | a & B | b', effect: 'A | a', payload: 'B | b' },
-        { id: 'A | a & null', effect: 'A | a', payload: null },
+        { id: "A | a & B | b", effect: "A | a", payload: "B | b" },
+        { id: "A | a & null", effect: "A | a", payload: null },
       ]);
     }
 
@@ -191,7 +183,7 @@ describe('SLON – Semantically-Loose Object Network', () => {
     }
   });
 
-  test('tree', async () => {
+  test("tree", async () => {
     await pg.sql`
       with
         "_0" as (
@@ -213,47 +205,25 @@ describe('SLON – Semantically-Loose Object Network', () => {
           insert into "slon_tree" ("node", "parent")
             values (& ('handle' | 'init'), (select "id" from "_2"))
             returning *
+        ),
+        "_4" as (
+          insert into "slon_tree" ("node", "parent")
+            values (('skip' | 'next') & ('json' | '{}'), (select "id" from "_2"))
+            returning *
         )
-      select * from "_0", "_1", "_2", "_3"
+      select * from "_0", "_1", "_2", "_3", "_4"
     `;
 
     search_for_any_program: {
-      const { rows } =
-        await pg.sql`select to_json(? ('program' | '*')) as "result"`;
-      expect(rows).toEqual([
-        {
-          result: {
-            node: expect.objectContaining({
-              effect: expect.objectContaining({ id: 'program | A' }),
-              payload: null,
-            }),
-            parent: null,
-            index: 1,
-            id: '1. program | A & null',
-          },
-        },
-      ]);
+      const { rows } = await pg.sql`select (? ('program' | '*'))."id"`;
+      expect(rows).toEqual([{ id: "1. program | A & null" }]);
     }
 
     search_for_steps_of_all_traces_of_any_program: {
-      const { rows } = await pg.sql`
-        select to_json(
-          ? ('trace' | ? ('program' | '*')) ? ('*' | '*')
-        ) as "result"
-      `;
+      const { rows } = await pg.sql`select (? ('trace' | ? ('program' | '*')) ? ('*' | '*'))."id"`;
       expect(rows).toEqual([
-        {
-          result: {
-            node: expect.objectContaining({
-              effect: expect.objectContaining({ id: 'handle | init' }),
-              payload: null,
-              id: 'handle | init & null',
-            }),
-            parent: '3. trace | A & null',
-            index: 4,
-            id: '4. handle | init & null',
-          },
-        },
+        { id: "4. handle | init & null" },
+        { id: "5. skip | next & json | {}" },
       ]);
     }
   });

@@ -15,5 +15,8 @@
     "hints": {
       "allowIgnoringCoverageInTests": true
     }
+  },
+  "prettier": {
+    "printWidth": 100
   }
 }
