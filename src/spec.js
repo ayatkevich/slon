@@ -174,5 +174,23 @@ describe('SLON – Semantically-Loose Object Network', () => {
         { id: 'A | a & null', effect: 'A | a', payload: null },
       ]);
     }
+
+    nodes_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('B' | 'b') as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
+
+    nodes_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | 'a') & ('B' | 'b') = ('B' | 'b') & ('A' | 'a') as "result"`;
+      expect(rows).toEqual([{ result: false }]);
+    }
+
+    nodes_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('*' | 'b') as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
   });
 });

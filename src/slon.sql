@@ -125,3 +125,15 @@ create operator & (
   rightArg = "slon_object",
   function = "slon_node_constructor"
 );
+
+create function "slon_node_equality" ("slon_node", "slon_node")
+  returns boolean
+as $$
+  select $1."effect" = $2."effect" and $1."payload" = $2."payload"
+$$ language sql immutable;
+
+create operator = (
+  leftArg = "slon_node",
+  rightArg = "slon_node",
+  function = "slon_node_equality"
+);
