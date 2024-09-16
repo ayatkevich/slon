@@ -41,21 +41,36 @@ describe('SLON – Semantically-Loose Object Network', () => {
       expect(rows).toEqual([{ id: 'A' }, { id: 'a' }]);
     }
 
-    symbol_equals_special_symbol_any: {
+    any_symbol_equals_special_symbol_any: {
       const { rows } = await pg.sql`select @'A' = @'*' as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
+
+    special_symbol_any_equals_any_symbol: {
+      const { rows } = await pg.sql`select @'*' = @'A' as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
+
+    special_symbol_any_equals_special_symbol_any: {
+      const { rows } = await pg.sql`select @'*' = @'*' as "result"`;
       expect(rows).toEqual([{ result: true }]);
     }
   });
 
   test('object', async () => {
-    object_is_a_pair_of_text_symbols: {
-      const { rows } = await pg.sql`select ('A' | 'a').*`;
-      expect(rows).toEqual([{ left: 'A', right: 'a' }]);
-    }
-
     object_is_a_pair_of_symbols: {
       const { rows } = await pg.sql`select (@'A' | @'a').*`;
-      expect(rows).toEqual([{ left: 'A', right: 'a' }]);
+      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
+    }
+
+    for_simplicity_symbol_sign_is_not_necessary: {
+      const { rows } = await pg.sql`select ('A' | 'a').*`;
+      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
+    }
+
+    objects_are_persisted: {
+      const { rows } = await pg.sql`select * from "slon_object"`;
+      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
     }
   });
 });

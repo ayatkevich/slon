@@ -36,21 +36,28 @@ create operator = (
 --------------------------------------------------------------------------------
 -- SLON Object
 --------------------------------------------------------------------------------
-create type "slon_object" as (
+create table "slon_object" (
   "left" text,
-  "right" text
+  "right" text,
+  "id" text primary key generated always as ("left" || ' | ' || "right") stored,
+  "index" serial
 );
 
 create function "slon_object_constructor" (text, text)
   returns "slon_object"
+  returns null on null input
 as $$
-  select row(("slon_symbol_constructor"($1))."id", ("slon_symbol_constructor"($2))."id")::"slon_object"
-$$ language sql immutable;
+  insert into "slon_object" ("left", "right") values ($1, $2)
+    on conflict ("id")
+      do update set "left" = "excluded"."left", "right" = "excluded"."right"
+    returning *
+$$ language sql volatile;
 
 create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
   returns "slon_object"
+  returns null on null input
 as $$
-  select row((($1))."id", (($2))."id")::"slon_object"
+  select "slon_object_constructor" ($1."id", $2."id")
 $$ language sql immutable;
 
 create operator | (
