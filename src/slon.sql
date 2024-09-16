@@ -20,6 +20,18 @@ create operator @ (
   function = "slon_symbol_constructor"
 );
 
+create function "slon_symbol_equality" ("slon_symbol", "slon_symbol")
+  returns boolean
+as $$
+  select $1."id" = '*' or $2."id" = '*' or $1."id" = $2."id"
+$$ language sql immutable;
+
+create operator = (
+  leftArg = "slon_symbol",
+  rightArg = "slon_symbol",
+  function = "slon_symbol_equality"
+);
+
 
 --------------------------------------------------------------------------------
 -- SLON Object
