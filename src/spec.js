@@ -60,18 +60,46 @@ describe('SLON – Semantically-Loose Object Network', () => {
 
   test('object', async () => {
     object_is_a_pair_of_symbols: {
-      const { rows } = await pg.sql`select (@'A' | @'a').*`;
-      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
+      const { rows } = await pg.sql`select to_json(@'A' | @'a') as "result"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            id: 'A | a',
+            index: 1,
+            left: expect.objectContaining({ id: 'A' }),
+            right: expect.objectContaining({ id: 'a' }),
+          },
+        },
+      ]);
     }
 
     for_simplicity_symbol_sign_is_not_necessary: {
-      const { rows } = await pg.sql`select ('A' | 'a').*`;
-      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
+      const { rows } = await pg.sql`select to_json('A' | 'a') as "result"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            id: 'A | a',
+            index: 1,
+            left: expect.objectContaining({ id: 'A' }),
+            right: expect.objectContaining({ id: 'a' }),
+          },
+        },
+      ]);
     }
 
     objects_are_persisted: {
-      const { rows } = await pg.sql`select * from "slon_object"`;
-      expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
+      const { rows } =
+        await pg.sql`select to_json("slon_object") as "result" from "slon_object"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            id: 'A | a',
+            index: 1,
+            left: expect.objectContaining({ id: 'A' }),
+            right: expect.objectContaining({ id: 'a' }),
+          },
+        },
+      ]);
     }
 
     object_equals_same_object: {

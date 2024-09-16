@@ -37,13 +37,13 @@ create operator = (
 -- SLON Object
 --------------------------------------------------------------------------------
 create table "slon_object" (
-  "left" text,
-  "right" text,
-  "id" text primary key generated always as ("left" || ' | ' || "right") stored,
+  "left" "slon_symbol",
+  "right" "slon_symbol",
+  "id" text primary key generated always as (("left")."id" || ' | ' || ("right")."id") stored,
   "index" serial
 );
 
-create function "slon_object_constructor" (text, text)
+create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
   returns "slon_object"
   returns null on null input
 as $$
@@ -53,11 +53,11 @@ as $$
     returning *
 $$ language sql volatile;
 
-create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
+create function "slon_object_constructor" (text, text)
   returns "slon_object"
   returns null on null input
 as $$
-  select "slon_object_constructor" ($1."id", $2."id")
+  select "slon_object_constructor" (@$1, @$2)
 $$ language sql volatile;
 
 create operator | (
@@ -75,7 +75,7 @@ create operator | (
 create function "slon_object_equality" ("slon_object", "slon_object")
   returns boolean
 as $$
-  select @$1."left" = @$2."left" and @$1."right" = @$2."right"
+  select $1."left" = $2."left" and $1."right" = $2."right"
 $$ language sql immutable;
 
 create operator = (
