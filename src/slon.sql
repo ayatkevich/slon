@@ -22,17 +22,34 @@ create type "slon_relation" as (
 create function "slon_relation_constructor" ("slon_object", "slon_object"[]) returns setof "slon_relation" as $$
   select *
     from (
-      select row(1, null, $1)::"slon_relation" as "relation"
+      select row(1, null, $1)::"slon_relation" as "~relation"
       union
-      select row(row_number() over () + 1, 1, "~")::"slon_relation" as "relation"
-        from unnest($2) as "~"
+      select row(row_number() over () + 1, 1, "~2")::"slon_relation" as "~relation"
+        from unnest($2) as "~2"
     )
-    order by ("relation")."index"
+    order by ("~relation")."index"
+$$ language sql immutable;
+
+create function "slon_relation_constructor" ("slon_object", "slon_relation"[]) returns setof "slon_relation" as $$
+  select distinct on (("~relation")."index") "~relation"
+    from (
+      select row(1, null, $1)::"slon_relation" as "~relation"
+      union
+      select row(("~2")."index" + 1, coalesce(("~2")."parent" + 1, 1), ("~2")."object")::"slon_relation" as "~relation"
+        from unnest($2) as "~2"
+    )
+    order by ("~relation")."index"
 $$ language sql immutable;
 
 create operator & (
   leftArg = "slon_object",
   rightArg = "slon_object"[],
+  function = "slon_relation_constructor"
+);
+
+create operator & (
+  leftArg = "slon_object",
+  rightArg = "slon_relation"[],
   function = "slon_relation_constructor"
 );
 

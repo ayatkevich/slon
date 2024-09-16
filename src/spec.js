@@ -35,6 +35,28 @@ describe('SLON – Semantically-Loose Object Network', () => {
     expect(
       (
         await pg.sql`
+          select distinct on ("index") to_json("~") as "result"
+            from (
+              select (
+                ('A' | 'a') & array[
+                  ('B' | 'b') & array[
+                    ('C' | 'c')
+                  ]
+                ]
+              ).*
+            ) as "~"
+            order by "index"
+        `
+      ).rows
+    ).toEqual([
+      { result: { index: 1, parent: null, object: { left: 'A', right: 'a' } } },
+      { result: { index: 2, parent: 1, object: { left: 'B', right: 'b' } } },
+      { result: { index: 3, parent: 2, object: { left: 'C', right: 'c' } } },
+    ]);
+
+    expect(
+      (
+        await pg.sql`
           select to_json(
             ('A' | 'a') & array[
               ('B' | 'b'),
