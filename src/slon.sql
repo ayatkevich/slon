@@ -72,3 +72,15 @@ create operator | (
   function = "slon_object_constructor"
 );
 
+create function "slon_object_equality" ("slon_object", "slon_object")
+  returns boolean
+as $$
+  select @$1."left" = @$2."left" and @$1."right" = @$2."right"
+$$ language sql immutable;
+
+create operator = (
+  leftArg = "slon_object",
+  rightArg = "slon_object",
+  function = "slon_object_equality"
+);
+

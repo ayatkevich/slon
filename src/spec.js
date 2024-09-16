@@ -72,5 +72,23 @@ describe('SLON – Semantically-Loose Object Network', () => {
       const { rows } = await pg.sql`select * from "slon_object"`;
       expect(rows).toEqual([{ id: 'A | a', index: 1, left: 'A', right: 'a' }]);
     }
+
+    object_equals_same_object: {
+      const { rows } =
+        await pg.sql`select (@'A' | @'a') = ('A' | 'a') as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
+
+    object_does_not_equal_different_object: {
+      const { rows } =
+        await pg.sql`select (@'A' | @'a') = ('a' | 'A') as "result"`;
+      expect(rows).toEqual([{ result: false }]);
+    }
+
+    special_symbol_any_can_be_used_for_pattern_matching: {
+      const { rows } =
+        await pg.sql`select ('A' | '*') = ('A' | 'a') as "result"`;
+      expect(rows).toEqual([{ result: true }]);
+    }
   });
 });
