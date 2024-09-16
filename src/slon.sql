@@ -154,50 +154,50 @@ create table "slon_tree" (
   "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
 );
 
-create function "slon_search" ("slon_node")
+create function "slon_query" ("slon_node")
   returns setof "slon_tree"
 as $$
-  select * from "slon_tree" where "node" = $1
+  select * from "slon_tree" where "node" = $1 and "parent" is null
 $$ language sql immutable;
 
-create function "slon_search" ("slon_object")
+create function "slon_query" ("slon_object")
   returns setof "slon_tree"
 as $$
-  select "slon_search" (& $1)
+  select "slon_query" (&$1)
 $$ language sql immutable;
 
-create function "slon_search" ("slon_tree", "slon_node")
+create function "slon_query" ("slon_tree", "slon_node")
   returns setof "slon_tree"
 as $$
-  select * from "slon_search" ($2) where "parent" = $1."id"
+  select * from "slon_tree" where "node" = $2 and "parent" = $1."id"
 $$ language sql immutable;
 
-create function "slon_search" ("slon_tree", "slon_object")
+create function "slon_query" ("slon_tree", "slon_object")
   returns setof "slon_tree"
 as $$
-  select * from "slon_search" ($1, & $2)
+  select * from "slon_query" ($1, &$2)
 $$ language sql immutable;
 
 create operator ? (
   rightArg = "slon_node",
-  function = "slon_search"
+  function = "slon_query"
 );
 
 create operator ? (
   rightArg = "slon_object",
-  function = "slon_search"
+  function = "slon_query"
 );
 
 create operator ? (
   leftArg = "slon_tree",
   rightArg = "slon_node",
-  function = "slon_search"
+  function = "slon_query"
 );
 
 create operator ? (
   leftArg = "slon_tree",
   rightArg = "slon_object",
-  function = "slon_search"
+  function = "slon_query"
 );
 
 create function "slon_object_constructor" (text, "slon_tree")

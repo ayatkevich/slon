@@ -214,16 +214,46 @@ describe("SLON – Semantically-Loose Object Network", () => {
       select * from "_0", "_1", "_2", "_3", "_4"
     `;
 
-    search_for_any_program: {
+    querying_starts_from_the_top_level_of_tree: {
+      const { rows } = await pg.sql`select (? ('*' | '*'))."id"`;
+      expect(rows).toEqual([{ id: "1. program | A & null" }, { id: "3. trace | A & null" }]);
+    }
+
+    query_for_any_program: {
       const { rows } = await pg.sql`select (? ('program' | '*'))."id"`;
       expect(rows).toEqual([{ id: "1. program | A & null" }]);
     }
 
-    search_for_steps_of_all_traces_of_any_program: {
+    query_for_steps_of_all_traces_of_any_program: {
       const { rows } = await pg.sql`select (? ('trace' | ? ('program' | '*')) ? ('*' | '*'))."id"`;
       expect(rows).toEqual([
         { id: "4. handle | init & null" },
         { id: "5. skip | next & json | {}" },
+      ]);
+    }
+
+    alternative_syntax_for_querying: {
+      const { rows } = await pg.sql`
+        select
+            "~program"."id" as "programId",
+            "~trace"."id" as "traceId",
+            "~step"."id" as "stepId"
+          from
+            "slon_query"(('program' | '*')) as "~program",
+            "slon_query"(('trace' | "~program")) as "~trace",
+            "slon_query"("~trace", ('*' | '*')) as "~step"
+      `;
+      expect(rows).toEqual([
+        {
+          programId: "1. program | A & null",
+          traceId: "3. trace | A & null",
+          stepId: "4. handle | init & null",
+        },
+        {
+          programId: "1. program | A & null",
+          traceId: "3. trace | A & null",
+          stepId: "5. skip | next & json | {}",
+        },
       ]);
     }
   });
