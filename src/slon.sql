@@ -41,12 +41,16 @@ create type "slon_object" as (
   "right" text
 );
 
-create function "slon_object_constructor" (text, text) returns "slon_object" as $$
-  select row(("slon_symbol_constructor"($1))."id", ("slon_symbol_constructor"($2))."id")::"slon_object";
+create function "slon_object_constructor" (text, text)
+  returns "slon_object"
+as $$
+  select row(("slon_symbol_constructor"($1))."id", ("slon_symbol_constructor"($2))."id")::"slon_object"
 $$ language sql immutable;
 
-create function "slon_object_constructor" ("slon_symbol", "slon_symbol") returns "slon_object" as $$
-  select row((($1))."id", (($2))."id")::"slon_object";
+create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
+  returns "slon_object"
+as $$
+  select row((($1))."id", (($2))."id")::"slon_object"
 $$ language sql immutable;
 
 create operator | (
