@@ -37,8 +37,8 @@ create operator = (
 -- SLON Object
 --------------------------------------------------------------------------------
 create table "slon_object" (
-  "left" "slon_symbol",
-  "right" "slon_symbol",
+  "left" "slon_symbol" not null,
+  "right" "slon_symbol" not null,
   "id" text primary key generated always as (("left")."id" || ' | ' || ("right")."id") stored,
   "index" serial
 );
@@ -75,7 +75,7 @@ create operator | (
 create function "slon_object_equality" ("slon_object", "slon_object")
   returns boolean
 as $$
-  select $1."left" = $2."left" and $1."right" = $2."right"
+  select $1."left" is not distinct from $2."left" and $1."right" is not distinct from $2."right"
 $$ language sql immutable;
 
 create operator = (
@@ -129,11 +129,44 @@ create operator & (
 create function "slon_node_equality" ("slon_node", "slon_node")
   returns boolean
 as $$
-  select $1."effect" = $2."effect" and $1."payload" = $2."payload"
+  select $1."effect" is not distinct from $2."effect" and $1."payload" is not distinct from $2."payload"
 $$ language sql immutable;
 
 create operator = (
   leftArg = "slon_node",
   rightArg = "slon_node",
   function = "slon_node_equality"
+);
+
+
+--------------------------------------------------------------------------------
+-- SLON Tree
+--------------------------------------------------------------------------------
+create table "slon_tree" (
+  "node" "slon_node" not null,
+  "parent" text references "slon_tree" ("id"),
+  "index" serial,
+  "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
+);
+
+create function "slon_search" ("slon_object")
+  returns setof "slon_tree"
+as $$
+  select * from "slon_tree" where "node" = & $1
+$$ language sql stable;
+
+create function "slon_search" ("slon_node")
+  returns setof "slon_tree"
+as $$
+  select * from "slon_tree" where "node" = $1
+$$ language sql stable;
+
+create operator ? (
+  rightArg = "slon_object",
+  function = "slon_search"
+);
+
+create operator ? (
+  rightArg = "slon_node",
+  function = "slon_search"
 );

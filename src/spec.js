@@ -1,14 +1,11 @@
 import { PGlite } from '@electric-sql/pglite';
-import { afterAll, describe, expect, test } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
 import { readFile } from 'fs/promises';
 
 describe('SLON – Semantically-Loose Object Network', () => {
   const pg = new PGlite();
+  beforeAll(async () => pg.exec(await readFile('./src/slon.sql', 'utf-8')));
   afterAll(() => pg.close());
-
-  test('install', async () => {
-    await pg.exec(await readFile('./src/slon.sql', 'utf-8'));
-  });
 
   test('symbol', async () => {
     no_symbols_registered: {
@@ -191,6 +188,51 @@ describe('SLON – Semantically-Loose Object Network', () => {
       const { rows } =
         await pg.sql`select ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('*' | 'b') as "result"`;
       expect(rows).toEqual([{ result: true }]);
+    }
+  });
+
+  test('tree', async () => {
+    await pg.sql`
+      with
+        "_0" as (
+          insert into "slon_tree" ("node", "parent")
+            values (& ('program' | 'A'), null)
+            returning *
+        ),
+        "_1" as (
+          insert into "slon_tree" ("node", "parent")
+            values (('*' | '*') & ('js' | '() => {}'), (select "id" from "_0"))
+            returning *
+        ),
+        "_2" as (
+          insert into "slon_tree" ("node", "parent")
+            values (& ('trace' | 'A'), null)
+            returning *
+        ),
+        "_3" as (
+          insert into "slon_tree" ("node", "parent")
+            values (& ('handle' | 'init'), (select "id" from "_2"))
+            returning *
+        )
+      select * from "_0", "_1", "_2", "_3"
+    `;
+
+    search_for_any_program: {
+      const { rows } =
+        await pg.sql`select to_json(? ('program' | '*')) as "result"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            node: expect.objectContaining({
+              effect: expect.objectContaining({ id: 'program | A' }),
+              payload: null,
+            }),
+            parent: null,
+            index: 1,
+            id: '1. program | A & null',
+          },
+        },
+      ]);
     }
   });
 });
