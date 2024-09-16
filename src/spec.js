@@ -9,66 +9,37 @@ describe('SLON – Semantically-Loose Object Network', () => {
     await pg.exec(await readFile('./src/slon.sql', 'utf-8'));
   });
 
-  test('object', async () => {
-    const { rows } = await pg.sql`select ('a' | 'b').*`;
-    expect(rows).toEqual([{ left: 'a', right: 'b' }]);
+  test('symbol', async () => {
+    noSymbolsRegistered: {
+      const { rows } = await pg.sql`select * from "slon_symbol"`;
+      expect(rows).toEqual([]);
+    }
+
+    addSomeSymbols: {
+      const { rows } = await pg.sql`select to_json(@'A') as "result"`;
+      expect(rows).toEqual([{ result: { id: 'A', index: 1 } }]);
+    }
+
+    symbolsArePersisted: {
+      const { rows } = await pg.sql`select * from "slon_symbol"`;
+      expect(rows).toEqual([{ id: 'A', index: 1 }]);
+    }
   });
 
-  test('network', async () => {
-    expect(
-      (
-        await pg.sql`
-          select to_json(
-            ('A' | 'a') & array[
-              ('B' | 'b'),
-              ('C' | 'c')
-            ]
-          ) as result
-        `
-      ).rows
-    ).toEqual([
-      { result: { index: 1, parent: null, object: { left: 'A', right: 'a' } } },
-      { result: { index: 2, parent: 1, object: { left: 'B', right: 'b' } } },
-      { result: { index: 3, parent: 1, object: { left: 'C', right: 'c' } } },
-    ]);
+  test('object', async () => {
+    objectIsAPairOfTextSymbols: {
+      const { rows } = await pg.sql`select ('A' | 'a').*`;
+      expect(rows).toEqual([{ left: 'A', right: 'a' }]);
+    }
 
-    expect(
-      (
-        await pg.sql`
-          select distinct on ("index") to_json("~") as "result"
-            from (
-              select (
-                ('A' | 'a') & array[
-                  ('B' | 'b') & array[
-                    ('C' | 'c')
-                  ]
-                ]
-              ).*
-            ) as "~"
-            order by "index"
-        `
-      ).rows
-    ).toEqual([
-      { result: { index: 1, parent: null, object: { left: 'A', right: 'a' } } },
-      { result: { index: 2, parent: 1, object: { left: 'B', right: 'b' } } },
-      { result: { index: 3, parent: 2, object: { left: 'C', right: 'c' } } },
-    ]);
+    objectIsAPairOfSymbols: {
+      const { rows } = await pg.sql`select (@'A' | @'a').*`;
+      expect(rows).toEqual([{ left: 'A', right: 'a' }]);
+    }
 
-    expect(
-      (
-        await pg.sql`
-          select to_json(
-            ('A' | 'a') & array[
-              ('B' | 'b'),
-              ('C' | 'c')
-            ] ? ('A' | 'a')
-          ) as result
-        `
-      ).rows
-    ).toEqual([
-      { result: { index: 1, parent: null, object: { left: 'A', right: 'a' } } },
-      { result: null },
-      { result: null },
-    ]);
+    symbolsArePersistedAndReused: {
+      const { rows } = await pg.sql`select "id" from "slon_symbol"`;
+      expect(rows).toEqual([{ id: 'A' }, { id: 'a' }]);
+    }
   });
 });
