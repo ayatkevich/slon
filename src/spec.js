@@ -234,5 +234,27 @@ describe('SLON – Semantically-Loose Object Network', () => {
         },
       ]);
     }
+
+    search_for_steps_of_all_traces_of_any_program: {
+      const { rows } = await pg.sql`
+        select to_json(
+          ? ('trace' | ? ('program' | '*')) ? ('*' | '*')
+        ) as "result"
+      `;
+      expect(rows).toEqual([
+        {
+          result: {
+            node: expect.objectContaining({
+              effect: expect.objectContaining({ id: 'handle | init' }),
+              payload: null,
+              id: 'handle | init & null',
+            }),
+            parent: '3. trace | A & null',
+            index: 4,
+            id: '4. handle | init & null',
+          },
+        },
+      ]);
+    }
   });
 });

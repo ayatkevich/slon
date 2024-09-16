@@ -149,17 +149,34 @@ create table "slon_tree" (
   "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
 );
 
-create function "slon_search" ("slon_object")
-  returns setof "slon_tree"
-as $$
-  select * from "slon_tree" where "node" = & $1
-$$ language sql stable;
-
 create function "slon_search" ("slon_node")
   returns setof "slon_tree"
 as $$
   select * from "slon_tree" where "node" = $1
-$$ language sql stable;
+$$ language sql immutable;
+
+create function "slon_search" ("slon_object")
+  returns setof "slon_tree"
+as $$
+  select "slon_search" (& $1)
+$$ language sql immutable;
+
+create function "slon_search" ("slon_tree", "slon_node")
+  returns setof "slon_tree"
+as $$
+  select * from "slon_search" ($2) where "parent" = $1."id"
+$$ language sql immutable;
+
+create function "slon_search" ("slon_tree", "slon_object")
+  returns setof "slon_tree"
+as $$
+  select * from "slon_search" ($1, & $2)
+$$ language sql immutable;
+
+create operator ? (
+  rightArg = "slon_node",
+  function = "slon_search"
+);
 
 create operator ? (
   rightArg = "slon_object",
@@ -167,6 +184,26 @@ create operator ? (
 );
 
 create operator ? (
+  leftArg = "slon_tree",
   rightArg = "slon_node",
   function = "slon_search"
+);
+
+create operator ? (
+  leftArg = "slon_tree",
+  rightArg = "slon_object",
+  function = "slon_search"
+);
+
+create function "slon_object_constructor" (text, "slon_tree")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" (@$1, (($2."node")."effect")."right")
+$$ language sql volatile;
+
+create operator | (
+  leftArg = text,
+  rightArg = "slon_tree",
+  function = "slon_object_constructor"
 );
