@@ -84,3 +84,44 @@ create operator = (
   function = "slon_object_equality"
 );
 
+
+--------------------------------------------------------------------------------
+-- SLON Node
+--------------------------------------------------------------------------------
+create table "slon_node" (
+  "effect" "slon_object" not null,
+  "payload" "slon_object",
+  "id" text primary key generated always as (("effect")."id" || ' & ' || coalesce(("payload")."id", 'null')) stored,
+  "index" serial
+);
+
+create function "slon_node_constructor" ("slon_object")
+  returns "slon_node"
+  returns null on null input
+as $$
+  insert into "slon_node" ("effect") values ($1)
+    on conflict ("id")
+      do update set "effect" = "excluded"."effect"
+    returning *
+$$ language sql volatile;
+
+create function "slon_node_constructor" ("slon_object", "slon_object")
+  returns "slon_node"
+  returns null on null input
+as $$
+  insert into "slon_node" ("effect", "payload") values ($1, $2)
+    on conflict ("id")
+      do update set "effect" = "excluded"."effect", "payload" = "excluded"."payload"
+    returning *
+$$ language sql volatile;
+
+create operator & (
+  rightArg = "slon_object",
+  function = "slon_node_constructor"
+);
+
+create operator & (
+  leftArg = "slon_object",
+  rightArg = "slon_object",
+  function = "slon_node_constructor"
+);

@@ -1,9 +1,10 @@
 import { PGlite } from '@electric-sql/pglite';
-import { describe, expect, test } from '@jest/globals';
+import { afterAll, describe, expect, test } from '@jest/globals';
 import { readFile } from 'fs/promises';
 
 describe('SLON – Semantically-Loose Object Network', () => {
   const pg = new PGlite();
+  afterAll(() => pg.close());
 
   test('install', async () => {
     await pg.exec(await readFile('./src/slon.sql', 'utf-8'));
@@ -101,6 +102,49 @@ describe('SLON – Semantically-Loose Object Network', () => {
       const { rows } =
         await pg.sql`select ('A' | '*') = ('*' | 'a') as "result"`;
       expect(rows).toEqual([{ result: true }]);
+    }
+  });
+
+  test('node', async () => {
+    node_is_a_pair_of_objects: {
+      const { rows } =
+        await pg.sql`select to_json(('A' | 'a') & ('B' | 'b')) as "result"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            id: 'A | a & B | b',
+            index: 1,
+            effect: expect.objectContaining({ id: 'A | a' }),
+            payload: expect.objectContaining({ id: 'B | b' }),
+          },
+        },
+      ]);
+    }
+
+    or_node_is_just_a_single_object_without_payload: {
+      const { rows } = await pg.sql`select to_json(& ('A' | 'a')) as "result"`;
+      expect(rows).toEqual([
+        {
+          result: {
+            id: 'A | a & null',
+            index: 2,
+            effect: expect.objectContaining({ id: 'A | a' }),
+            payload: null,
+          },
+        },
+      ]);
+    }
+
+    nodes_are_persisted: {
+      const { rows } = await pg.sql`
+        select "id", ("effect")."id" as "effect", ("payload")."id" as "payload"
+          from "slon_node"
+          order by "index"
+      `;
+      expect(rows).toEqual([
+        { id: 'A | a & B | b', effect: 'A | a', payload: 'B | b' },
+        { id: 'A | a & null', effect: 'A | a', payload: null },
+      ]);
     }
   });
 });
