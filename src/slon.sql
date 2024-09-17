@@ -201,7 +201,7 @@ create operator = (
 --------------------------------------------------------------------------------
 create table "slon_tree" (
   "node" "slon_node" not null,
-  "parent" text references "slon_tree" ("id"),
+  "parent" text references "slon_tree" ("id") on delete cascade,
   "index" serial,
   "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
 );

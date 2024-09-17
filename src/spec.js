@@ -139,7 +139,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
     }
 
     or_node_is_just_a_single_object_without_payload: {
-      const { rows } = await pg.sql`select to_json(& ('A' | 'a')) as "result"`;
+      const { rows } = await pg.sql`select to_json(&('A' | 'a')) as "result"`;
       expect(rows).toEqual([
         {
           result: {
@@ -188,7 +188,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
       with
         "_0" as (
           insert into "slon_tree" ("node", "parent")
-            values (& ('program' | 'A'), null)
+            values (&('program' | 'A'), null)
             returning *
         ),
         "_1" as (
@@ -198,12 +198,12 @@ describe("SLON – Semantically-Loose Object Network", () => {
         ),
         "_2" as (
           insert into "slon_tree" ("node", "parent")
-            values (& ('trace' | 'A'), null)
+            values (&('trace' | 'A'), null)
             returning *
         ),
         "_3" as (
           insert into "slon_tree" ("node", "parent")
-            values (& ('handle' | 'init'), (select "id" from "_2"))
+            values (&('handle' | 'init'), (select "id" from "_2"))
             returning *
         ),
         "_4" as (
@@ -235,13 +235,13 @@ describe("SLON – Semantically-Loose Object Network", () => {
     alternative_syntax_for_querying: {
       const { rows } = await pg.sql`
         select
-            program.id as "programId",
-            trace.id as "traceId",
-            step.id as "stepId"
+            "~program"."id" as "programId",
+            "~trace"."id" as "traceId",
+            "~step"."id" as "stepId"
           from
-            "slon_query"('program' | '*') as program,
-            "slon_query"('trace' | program) as trace,
-            "slon_query"(trace, '*' | '*') as step
+            "slon_query"('program' | '*') as "~program",
+            "slon_query"('trace' | "~program") as "~trace",
+            "slon_query"("~trace", '*' | '*') as "~step"
       `;
       expect(rows).toEqual([
         {
@@ -256,5 +256,46 @@ describe("SLON – Semantically-Loose Object Network", () => {
         },
       ]);
     }
+  });
+
+  describe("use cases", () => {
+    test("simplified pg schema navigation", async () => {
+      await pg.sql`
+        with
+          "~reset" as (
+            delete from "slon_tree"
+              where "node" = &('table' | '*')
+              returning *
+          ),
+          "~table" as (
+            insert into "slon_tree" ("node")
+              select &('table' | pg_class.relName)
+                from pg_class
+                where relKind = 'r'
+              returning *
+          ),
+          "~column" as (
+            insert into "slon_tree" ("node", "parent")
+              select &('column' | pg_attribute.attName), "~table"."id"
+                from "~table"
+                  inner join pg_class
+                    on pg_class.relName = ((("~table"."node")."effect")."right")."id"
+                  inner join pg_attribute
+                    on pg_class.oid = pg_attribute.attRelId
+                where pg_attribute.attNum > 0
+              returning *
+          )
+        select * from "~reset", "~table", "~column"
+      `;
+
+      all_columns_of_table_slon_symbol: {
+        const { rows } = await pg.sql`
+          select ((((
+            ? ('table' | 'slon_symbol') ? ('column' | '*')
+          )."node")."effect")."right")."id" as "column"
+        `;
+        expect(rows).toEqual([{ column: "id" }, { column: "index" }]);
+      }
+    });
   });
 });
