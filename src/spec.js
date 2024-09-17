@@ -235,13 +235,13 @@ describe("SLON – Semantically-Loose Object Network", () => {
     alternative_syntax_for_querying: {
       const { rows } = await pg.sql`
         select
-            "~program"."id" as "programId",
-            "~trace"."id" as "traceId",
-            "~step"."id" as "stepId"
+            program.id as "programId",
+            trace.id as "traceId",
+            step.id as "stepId"
           from
-            "slon_query"(('program' | '*')) as "~program",
-            "slon_query"(('trace' | "~program")) as "~trace",
-            "slon_query"("~trace", ('*' | '*')) as "~step"
+            "slon_query"('program' | '*') as program,
+            "slon_query"('trace' | program) as trace,
+            "slon_query"(trace, '*' | '*') as step
       `;
       expect(rows).toEqual([
         {

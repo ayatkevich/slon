@@ -84,6 +84,58 @@ create operator = (
   function = "slon_object_equality"
 );
 
+create function "slon_object_constructor" ("slon_symbol", "slon_object")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" ($1, $2."right")
+$$ language sql stable;
+
+create function "slon_object_constructor" (text, "slon_object")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" (@$1, $2)
+$$ language sql volatile;
+
+create function "slon_object_constructor" ("slon_object", "slon_symbol")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" ($1."left", $2)
+$$ language sql stable;
+
+create function "slon_object_constructor" ("slon_object", text)
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" ($1, @$2)
+$$ language sql volatile;
+
+create operator | (
+  leftArg = text,
+  rightArg = "slon_object",
+  function = "slon_object_constructor"
+);
+
+create operator | (
+  leftArg = "slon_symbol",
+  rightArg = "slon_object",
+  function = "slon_object_constructor"
+);
+
+create operator | (
+  leftArg = "slon_object",
+  rightArg = text,
+  function = "slon_object_constructor"
+);
+
+create operator | (
+  leftArg = "slon_object",
+  rightArg = "slon_symbol",
+  function = "slon_object_constructor"
+);
+
 
 --------------------------------------------------------------------------------
 -- SLON Node
@@ -200,18 +252,32 @@ create operator ? (
   function = "slon_query"
 );
 
+create function "slon_object_constructor" ("slon_symbol", "slon_tree")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" ($1, ($2."node")."effect")
+$$ language sql stable;
+
 create function "slon_object_constructor" (text, "slon_tree")
   returns "slon_object"
   returns null on null input
 as $$
-  select "slon_object_constructor" (@$1, (($2."node")."effect")."right")
+  select "slon_object_constructor" (@$1, $2)
 $$ language sql volatile;
+
+create function "slon_object_constructor" ("slon_tree", "slon_symbol")
+  returns "slon_object"
+  returns null on null input
+as $$
+  select "slon_object_constructor" (($1."node")."effect", $2)
+$$ language sql stable;
 
 create function "slon_object_constructor" ("slon_tree", text)
   returns "slon_object"
   returns null on null input
 as $$
-  select "slon_object_constructor" ((($1."node")."effect")."left", @$2)
+  select "slon_object_constructor" ($1, @$2)
 $$ language sql volatile;
 
 create operator | (
@@ -221,7 +287,19 @@ create operator | (
 );
 
 create operator | (
+  leftArg = "slon_symbol",
+  rightArg = "slon_tree",
+  function = "slon_object_constructor"
+);
+
+create operator | (
   leftArg = "slon_tree",
   rightArg = text,
+  function = "slon_object_constructor"
+);
+
+create operator | (
+  leftArg = "slon_tree",
+  rightArg = "slon_symbol",
   function = "slon_object_constructor"
 );

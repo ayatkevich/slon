@@ -186,9 +186,9 @@ SELECT
     trace.id AS trace_id,
     step.id AS step_id
 FROM
-    slon_query(('program' | '*')) AS program,
-    slon_query(('trace' | program)) AS trace,
-    slon_query(trace, ('*' | '*')) AS step;
+    slon_query('program' | '*') AS program,
+    slon_query('trace' | program) AS trace,
+    slon_query(trace, '*' | '*') AS step;
 ```
 
 ## Pattern Matching
