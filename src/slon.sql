@@ -89,7 +89,7 @@ create function "slon_object_constructor" ("slon_symbol", "slon_object")
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, $2."right")
-$$ language sql stable;
+$$ language sql volatile;
 
 create function "slon_object_constructor" (text, "slon_object")
   returns "slon_object"
@@ -103,7 +103,7 @@ create function "slon_object_constructor" ("slon_object", "slon_symbol")
   returns null on null input
 as $$
   select "slon_object_constructor" ($1."left", $2)
-$$ language sql stable;
+$$ language sql volatile;
 
 create function "slon_object_constructor" ("slon_object", text)
   returns "slon_object"
@@ -257,7 +257,7 @@ create function "slon_object_constructor" ("slon_symbol", "slon_tree")
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, ($2."node")."effect")
-$$ language sql stable;
+$$ language sql volatile;
 
 create function "slon_object_constructor" (text, "slon_tree")
   returns "slon_object"
@@ -271,7 +271,7 @@ create function "slon_object_constructor" ("slon_tree", "slon_symbol")
   returns null on null input
 as $$
   select "slon_object_constructor" (($1."node")."effect", $2)
-$$ language sql stable;
+$$ language sql volatile;
 
 create function "slon_object_constructor" ("slon_tree", text)
   returns "slon_object"

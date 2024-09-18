@@ -1,6 +1,6 @@
 # SLON: Semantically-Loose Object Network
 
-SLON (Semantically-Loose Object Network) is a flexible data structure implemented as a PostgreSQL extension. It represents a tree of pairs of pairs, allowing for dynamic and pattern-matching capabilities through custom operators and functions. This document provides an overview of SLON's components, their interactions, and how to utilize them effectively.
+SLON (Semantically-Loose Object Network) is an experimental data structure implemented as a PostgreSQL extension. It represents a tree of pairs of pairs, allowing for dynamic and pattern-matching capabilities through custom operators and functions. This document provides an overview of SLON's components, their interactions, and how to utilize them effectively.
 
 ## Table of Contents
 
