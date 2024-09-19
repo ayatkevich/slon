@@ -247,33 +247,7 @@ column | id
 
 ## Testing
 
-The provided test suite (`specification tests`) demonstrates various use cases and validates the behavior of the SLON data structure.
-
-**Example Test Cases:**
-
-- **Symbol Equality:**
-
-  ```sql
-  SELECT @'A' = @'A' AS result;  -- true
-  SELECT @'A' = @'*' AS result;  -- true
-  SELECT @'A' = @'B' AS result;  -- false
-  ```
-
-- **Object Equality:**
-
-  ```sql
-  SELECT (@'A' | @'a') = ('A' | 'a') AS result;  -- true
-  SELECT ('A' | '*') = ('A' | 'a') AS result;    -- true
-  SELECT ('A' | '*') = ('B' | 'b') AS result;    -- false
-  ```
-
-- **Node Equality:**
-
-  ```sql
-  SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('B' | 'b') AS result;  -- true
-  SELECT ('A' | 'a') & ('B' | 'b') = ('B' | 'b') & ('A' | 'a') AS result;  -- false
-  SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('*' | 'b') AS result;  -- true
-  ```
+The provided test suite (`spec.js`) demonstrates various use cases and validates the behavior of the SLON data structure.
 
 ## License
 

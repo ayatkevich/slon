@@ -214,6 +214,15 @@ describe("SLON – Semantically-Loose Object Network", () => {
   describe("use cases", () => {
     test("simplified pg schema navigation", async () => {
       await pg.sql`
+        create table "User" (
+          "name" text not null,
+          "email" text not null,
+          "bio" text,
+          "etag" text not null generated always as (md5("name" || "email" || "bio")) stored
+        );
+      `;
+
+      await pg.sql`
         with
           "~table" as (
             insert into "slon" ("node")
@@ -225,25 +234,81 @@ describe("SLON – Semantically-Loose Object Network", () => {
           ),
           "~column" as (
             insert into "slon" ("node", "related_to")
-              select &('column' | pg_attribute.attName), "~table"."id"
+              select ('column' | pg_attribute.attName) & ('number' | pg_attribute.attNum::text), "~table"."id"
                 from "~table"
                   inner join pg_attribute
                     on ((("~table"."node")."payload")."right")."id" = pg_attribute.attRelId::text
                 where pg_attribute.attNum > 0
               returning *
+          ),
+          "~notNull" as (
+            insert into "slon" ("node", "related_to")
+              select &('not null' | pg_attribute.attNotNull::text), "~column"."id"
+                from "~column"
+                  inner join "~table"
+                    on "~table"."id" = "~column"."related_to"
+                  inner join pg_attribute
+                    on ((("~column"."node")."payload")."right")."id" = pg_attribute.attNum::text
+                      and ((("~table"."node")."payload")."right")."id" = pg_attribute.attRelId::text
+              returning *
+          ),
+          "~generated" as (
+            insert into "slon" ("node", "related_to")
+              select &('generated' | case when pg_attribute.attGenerated = 's' then 'always' else 'never' end), "~column"."id"
+                from "~column"
+                  inner join "~table"
+                    on "~table"."id" = "~column"."related_to"
+                  inner join pg_attribute
+                    on ((("~column"."node")."payload")."right")."id" = pg_attribute.attNum::text
+                      and ((("~table"."node")."payload")."right")."id" = pg_attribute.attRelId::text
+              returning *
           )
-        select * from "~table", "~column"
+        select * from "~table", "~column", "~notNull", "~generated"
       `;
 
       all_columns_of_table_slon: {
         const { rows } = await pg.sql`
-          select ((? ('table' | 'slon') ? ('column' | '*'))."node")."id"
+          select ((
+            ? ('table' | 'User') ? ('column' | '*')
+          )."node")."id"
         `;
         expect(rows).toEqual([
-          { id: "column | node" },
-          { id: "column | related_to" },
-          { id: "column | index" },
-          { id: "column | id" },
+          { id: "column | name & number | 1" },
+          { id: "column | email & number | 2" },
+          { id: "column | bio & number | 3" },
+          { id: "column | etag & number | 4" },
+        ]);
+      }
+
+      all_columns_that_are_not_null: {
+        const { rows } = await pg.sql`
+          select ("~column"."node")."id"
+            from
+              "slon_query"('table' | 'User') as "~table",
+              "slon_query"("~table", 'column' | '*') as "~column",
+              "slon_query"("~column", 'not null' | 'true') as "~notNull"
+            order by "~column"."index"
+        `;
+        expect(rows).toEqual([
+          { id: "column | name & number | 1" },
+          { id: "column | email & number | 2" },
+          { id: "column | etag & number | 4" },
+        ]);
+      }
+
+      all_columns_that_are_not_null_and_not_generated: {
+        const { rows } = await pg.sql`
+          select ("~column"."node")."id"
+            from
+              "slon_query"('table' | 'User') as "~table",
+              "slon_query"("~table", 'column' | '*') as "~column",
+              "slon_query"("~column", 'not null' | 'true') as "~notNull",
+              "slon_query"("~column", 'generated' | 'never') as "~generated"
+            order by "~column"."index"
+        `;
+        expect(rows).toEqual([
+          { id: "column | name & number | 1" },
+          { id: "column | email & number | 2" },
         ]);
       }
     });
