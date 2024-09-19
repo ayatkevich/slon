@@ -8,19 +8,9 @@ describe("SLON – Semantically-Loose Object Network", () => {
   afterAll(() => pg.close());
 
   test("symbol", async () => {
-    no_symbols_registered: {
-      const { rows } = await pg.sql`select * from "slon_symbol"`;
-      expect(rows).toEqual([]);
-    }
-
     add_some_symbols: {
       const { rows } = await pg.sql`select to_json(@'A') as "result"`;
-      expect(rows).toEqual([{ result: { id: "A", index: 1 } }]);
-    }
-
-    symbols_are_persisted: {
-      const { rows } = await pg.sql`select * from "slon_symbol"`;
-      expect(rows).toEqual([{ id: "A", index: 1 }]);
+      expect(rows).toEqual([{ result: { id: "A" } }]);
     }
 
     symbol_equals_same_symbol: {
@@ -31,11 +21,6 @@ describe("SLON – Semantically-Loose Object Network", () => {
     symbol_does_not_equal_different_symbol: {
       const { rows } = await pg.sql`select @'A' = @'a' as "result"`;
       expect(rows).toEqual([{ result: false }]);
-    }
-
-    symbols_are_persisted_and_reused: {
-      const { rows } = await pg.sql`select "id" from "slon_symbol" order by "id"`;
-      expect(rows).toEqual([{ id: "A" }, { id: "a" }]);
     }
 
     any_symbol_equals_special_symbol_any: {
@@ -61,9 +46,8 @@ describe("SLON – Semantically-Loose Object Network", () => {
         {
           result: {
             id: "A | a",
-            index: 1,
-            left: expect.objectContaining({ id: "A" }),
-            right: expect.objectContaining({ id: "a" }),
+            left: { id: "A" },
+            right: { id: "a" },
           },
         },
       ]);
@@ -75,23 +59,8 @@ describe("SLON – Semantically-Loose Object Network", () => {
         {
           result: {
             id: "A | a",
-            index: 1,
-            left: expect.objectContaining({ id: "A" }),
-            right: expect.objectContaining({ id: "a" }),
-          },
-        },
-      ]);
-    }
-
-    objects_are_persisted: {
-      const { rows } = await pg.sql`select to_json("slon_object") as "result" from "slon_object"`;
-      expect(rows).toEqual([
-        {
-          result: {
-            id: "A | a",
-            index: 1,
-            left: expect.objectContaining({ id: "A" }),
-            right: expect.objectContaining({ id: "a" }),
+            left: { id: "A" },
+            right: { id: "a" },
           },
         },
       ]);
@@ -130,9 +99,8 @@ describe("SLON – Semantically-Loose Object Network", () => {
         {
           result: {
             id: "A | a & B | b",
-            index: 1,
-            effect: expect.objectContaining({ id: "A | a" }),
-            payload: expect.objectContaining({ id: "B | b" }),
+            effect: { id: "A | a", left: { id: "A" }, right: { id: "a" } },
+            payload: { id: "B | b", left: { id: "B" }, right: { id: "b" } },
           },
         },
       ]);
@@ -144,23 +112,10 @@ describe("SLON – Semantically-Loose Object Network", () => {
         {
           result: {
             id: "A | a & null",
-            index: 2,
             effect: expect.objectContaining({ id: "A | a" }),
             payload: null,
           },
         },
-      ]);
-    }
-
-    nodes_are_persisted: {
-      const { rows } = await pg.sql`
-        select "id", ("effect")."id" as "effect", ("payload")."id" as "payload"
-          from "slon_node"
-          order by "index"
-      `;
-      expect(rows).toEqual([
-        { id: "A | a & B | b", effect: "A | a", payload: "B | b" },
-        { id: "A | a & null", effect: "A | a", payload: null },
       ]);
     }
 
@@ -187,27 +142,27 @@ describe("SLON – Semantically-Loose Object Network", () => {
     await pg.sql`
       with
         "_0" as (
-          insert into "slon_tree" ("node", "parent")
+          insert into "slon" ("node", "parent")
             values (&('program' | 'A'), null)
             returning *
         ),
         "_1" as (
-          insert into "slon_tree" ("node", "parent")
+          insert into "slon" ("node", "parent")
             values (('*' | '*') & ('js' | '() => {}'), (select "id" from "_0"))
             returning *
         ),
         "_2" as (
-          insert into "slon_tree" ("node", "parent")
+          insert into "slon" ("node", "parent")
             values (&('trace' | 'A'), null)
             returning *
         ),
         "_3" as (
-          insert into "slon_tree" ("node", "parent")
+          insert into "slon" ("node", "parent")
             values (&('handle' | 'init'), (select "id" from "_2"))
             returning *
         ),
         "_4" as (
-          insert into "slon_tree" ("node", "parent")
+          insert into "slon" ("node", "parent")
             values (('skip' | 'next') & ('json' | '{}'), (select "id" from "_2"))
             returning *
         )
@@ -242,6 +197,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
             "slon_query"('program' | '*') as "~program",
             "slon_query"('trace' | "~program") as "~trace",
             "slon_query"("~trace", '*' | '*') as "~step"
+          order by "~step"."index"
       `;
       expect(rows).toEqual([
         {
@@ -262,39 +218,39 @@ describe("SLON – Semantically-Loose Object Network", () => {
     test("simplified pg schema navigation", async () => {
       await pg.sql`
         with
-          "~reset" as (
-            delete from "slon_tree"
-              where "node" = &('table' | '*')
-              returning *
-          ),
           "~table" as (
-            insert into "slon_tree" ("node")
+            insert into "slon" ("node")
               select &('table' | pg_class.relName)
                 from pg_class
                 where relKind = 'r'
               returning *
           ),
           "~column" as (
-            insert into "slon_tree" ("node", "parent")
+            insert into "slon" ("node", "parent")
               select &('column' | pg_attribute.attName), "~table"."id"
                 from "~table"
                   inner join pg_class
-                    on pg_class.relName = ((("~table"."node")."effect")."right")."id"
+                    on "~table"."node" = &('table' | pg_class.relName)
                   inner join pg_attribute
                     on pg_class.oid = pg_attribute.attRelId
                 where pg_attribute.attNum > 0
               returning *
           )
-        select * from "~reset", "~table", "~column"
+        select * from "~table", "~column"
       `;
 
-      all_columns_of_table_slon_symbol: {
+      all_columns_of_table_slon: {
         const { rows } = await pg.sql`
           select ((((
-            ? ('table' | 'slon_symbol') ? ('column' | '*')
+            ? ('table' | 'slon') ? ('column' | '*')
           )."node")."effect")."right")."id" as "column"
         `;
-        expect(rows).toEqual([{ column: "id" }, { column: "index" }]);
+        expect(rows).toEqual([
+          { column: "node" },
+          { column: "parent" },
+          { column: "index" },
+          { column: "id" },
+        ]);
       }
     });
   });

@@ -1,19 +1,16 @@
 --------------------------------------------------------------------------------
 -- SLON Symbol
 --------------------------------------------------------------------------------
-create table "slon_symbol" (
-  "id" text not null primary key,
-  "index" serial
+create type "slon_symbol" as (
+  "id" text
 );
 
 create function "slon_symbol_constructor" (text)
   returns "slon_symbol"
   returns null on null input
 as $$
-  insert into "slon_symbol" ("id") values ($1)
-    on conflict ("id") do update set "id" = "excluded"."id"
-    returning *
-$$ language sql volatile;
+  select row ($1)::"slon_symbol"
+$$ language sql immutable;
 
 create operator @ (
   rightArg = text,
@@ -36,29 +33,25 @@ create operator = (
 --------------------------------------------------------------------------------
 -- SLON Object
 --------------------------------------------------------------------------------
-create table "slon_object" (
-  "left" "slon_symbol" not null,
-  "right" "slon_symbol" not null,
-  "id" text primary key generated always as (("left")."id" || ' | ' || ("right")."id") stored,
-  "index" serial
+create type "slon_object" as (
+  "left" "slon_symbol",
+  "right" "slon_symbol",
+  "id" text
 );
 
 create function "slon_object_constructor" ("slon_symbol", "slon_symbol")
   returns "slon_object"
   returns null on null input
 as $$
-  insert into "slon_object" ("left", "right") values ($1, $2)
-    on conflict ("id")
-      do update set "left" = "excluded"."left", "right" = "excluded"."right"
-    returning *
-$$ language sql volatile;
+  select row ($1, $2, $1."id" || ' | ' || $2."id")::"slon_object"
+$$ language sql immutable;
 
 create function "slon_object_constructor" (text, text)
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" (@$1, @$2)
-$$ language sql volatile;
+$$ language sql immutable;
 
 create operator | (
   leftArg = text,
@@ -89,28 +82,28 @@ create function "slon_object_constructor" ("slon_symbol", "slon_object")
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, $2."right")
-$$ language sql volatile;
+$$ language sql immutable;
 
 create function "slon_object_constructor" (text, "slon_object")
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" (@$1, $2)
-$$ language sql volatile;
+$$ language sql immutable;
 
 create function "slon_object_constructor" ("slon_object", "slon_symbol")
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" ($1."left", $2)
-$$ language sql volatile;
+$$ language sql immutable;
 
 create function "slon_object_constructor" ("slon_object", text)
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, @$2)
-$$ language sql volatile;
+$$ language sql immutable;
 
 create operator | (
   leftArg = text,
@@ -140,32 +133,25 @@ create operator | (
 --------------------------------------------------------------------------------
 -- SLON Node
 --------------------------------------------------------------------------------
-create table "slon_node" (
-  "effect" "slon_object" not null,
+create type "slon_node" as (
+  "effect" "slon_object",
   "payload" "slon_object",
-  "id" text primary key generated always as (("effect")."id" || ' & ' || coalesce(("payload")."id", 'null')) stored,
-  "index" serial
+  "id" text
 );
 
 create function "slon_node_constructor" ("slon_object")
   returns "slon_node"
   returns null on null input
 as $$
-  insert into "slon_node" ("effect") values ($1)
-    on conflict ("id")
-      do update set "effect" = "excluded"."effect"
-    returning *
-$$ language sql volatile;
+  select row ($1, null, $1."id" || ' & null')::"slon_node"
+$$ language sql immutable;
 
 create function "slon_node_constructor" ("slon_object", "slon_object")
   returns "slon_node"
   returns null on null input
 as $$
-  insert into "slon_node" ("effect", "payload") values ($1, $2)
-    on conflict ("id")
-      do update set "effect" = "excluded"."effect", "payload" = "excluded"."payload"
-    returning *
-$$ language sql volatile;
+  select row ($1, $2, $1."id" || ' & ' || $2."id")::"slon_node"
+$$ language sql immutable;
 
 create operator & (
   rightArg = "slon_object",
@@ -197,35 +183,35 @@ create operator = (
 
 
 --------------------------------------------------------------------------------
--- SLON Tree
+-- SLON Query
 --------------------------------------------------------------------------------
-create table "slon_tree" (
+create table "slon" (
   "node" "slon_node" not null,
-  "parent" text references "slon_tree" ("id") on delete cascade,
+  "parent" text references "slon" ("id") on delete cascade,
   "index" serial,
   "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
 );
 
 create function "slon_query" ("slon_node")
-  returns setof "slon_tree"
+  returns setof "slon"
 as $$
-  select * from "slon_tree" where "node" = $1 and "parent" is null
+  select * from "slon" where "node" = $1 and "parent" is null
 $$ language sql immutable;
 
 create function "slon_query" ("slon_object")
-  returns setof "slon_tree"
+  returns setof "slon"
 as $$
   select "slon_query" (&$1)
 $$ language sql immutable;
 
-create function "slon_query" ("slon_tree", "slon_node")
-  returns setof "slon_tree"
+create function "slon_query" ("slon", "slon_node")
+  returns setof "slon"
 as $$
-  select * from "slon_tree" where "node" = $2 and "parent" = $1."id"
+  select * from "slon" where "node" = $2 and "parent" = $1."id"
 $$ language sql immutable;
 
-create function "slon_query" ("slon_tree", "slon_object")
-  returns setof "slon_tree"
+create function "slon_query" ("slon", "slon_object")
+  returns setof "slon"
 as $$
   select * from "slon_query" ($1, &$2)
 $$ language sql immutable;
@@ -241,65 +227,65 @@ create operator ? (
 );
 
 create operator ? (
-  leftArg = "slon_tree",
+  leftArg = "slon",
   rightArg = "slon_node",
   function = "slon_query"
 );
 
 create operator ? (
-  leftArg = "slon_tree",
+  leftArg = "slon",
   rightArg = "slon_object",
   function = "slon_query"
 );
 
-create function "slon_object_constructor" ("slon_symbol", "slon_tree")
+create function "slon_object_constructor" ("slon_symbol", "slon")
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, ($2."node")."effect")
-$$ language sql volatile;
+$$ language sql immutable;
 
-create function "slon_object_constructor" (text, "slon_tree")
+create function "slon_object_constructor" (text, "slon")
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" (@$1, $2)
-$$ language sql volatile;
+$$ language sql immutable;
 
-create function "slon_object_constructor" ("slon_tree", "slon_symbol")
+create function "slon_object_constructor" ("slon", "slon_symbol")
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" (($1."node")."effect", $2)
-$$ language sql volatile;
+$$ language sql immutable;
 
-create function "slon_object_constructor" ("slon_tree", text)
+create function "slon_object_constructor" ("slon", text)
   returns "slon_object"
   returns null on null input
 as $$
   select "slon_object_constructor" ($1, @$2)
-$$ language sql volatile;
+$$ language sql immutable;
 
 create operator | (
   leftArg = text,
-  rightArg = "slon_tree",
+  rightArg = "slon",
   function = "slon_object_constructor"
 );
 
 create operator | (
   leftArg = "slon_symbol",
-  rightArg = "slon_tree",
+  rightArg = "slon",
   function = "slon_object_constructor"
 );
 
 create operator | (
-  leftArg = "slon_tree",
+  leftArg = "slon",
   rightArg = text,
   function = "slon_object_constructor"
 );
 
 create operator | (
-  leftArg = "slon_tree",
+  leftArg = "slon",
   rightArg = "slon_symbol",
   function = "slon_object_constructor"
 );
