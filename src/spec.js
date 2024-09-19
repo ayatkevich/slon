@@ -138,31 +138,31 @@ describe("SLON – Semantically-Loose Object Network", () => {
     }
   });
 
-  test("tree", async () => {
+  test("network", async () => {
     await pg.sql`
       with
         "_0" as (
-          insert into "slon" ("node", "parent")
+          insert into "slon" ("node", "related_to")
             values (&('program' | 'A'), null)
             returning *
         ),
         "_1" as (
-          insert into "slon" ("node", "parent")
+          insert into "slon" ("node", "related_to")
             values (('*' | '*') & ('js' | '() => {}'), (select "id" from "_0"))
             returning *
         ),
         "_2" as (
-          insert into "slon" ("node", "parent")
+          insert into "slon" ("node", "related_to")
             values (&('trace' | 'A'), null)
             returning *
         ),
         "_3" as (
-          insert into "slon" ("node", "parent")
+          insert into "slon" ("node", "related_to")
             values (&('handle' | 'init'), (select "id" from "_2"))
             returning *
         ),
         "_4" as (
-          insert into "slon" ("node", "parent")
+          insert into "slon" ("node", "related_to")
             values (('skip' | 'next') & ('json' | '{}'), (select "id" from "_2"))
             returning *
         )
@@ -224,11 +224,11 @@ describe("SLON – Semantically-Loose Object Network", () => {
               returning *
           ),
           "~column" as (
-            insert into "slon" ("node", "parent")
+            insert into "slon" ("node", "related_to")
               select &('column' | pg_attribute.attName), "~table"."id"
                 from "~table"
                   inner join pg_attribute
-                    on ("~table"."node")."payload" = ('oid' | pg_attribute.attRelId::text)
+                    on ((("~table"."node")."payload")."right")."id" = pg_attribute.attRelId::text
                 where pg_attribute.attNum > 0
               returning *
           )
@@ -241,7 +241,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
         `;
         expect(rows).toEqual([
           { id: "column | node" },
-          { id: "column | parent" },
+          { id: "column | related_to" },
           { id: "column | index" },
           { id: "column | id" },
         ]);

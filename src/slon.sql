@@ -191,7 +191,7 @@ create operator = (
 --------------------------------------------------------------------------------
 create table "slon" (
   "node" "slon_node" not null,
-  "parent" text references "slon" ("id") on delete cascade,
+  "related_to" text references "slon" ("id") on delete cascade,
   "index" serial,
   "id" text primary key generated always as ("index" || '. ' || ("node")."id") stored
 );
@@ -199,7 +199,7 @@ create table "slon" (
 create function "slon_query" ("slon_node")
   returns setof "slon"
 as $$
-  select * from "slon" where "node" = $1 and "parent" is null
+  select * from "slon" where "node" = $1 and "related_to" is null
 $$ language sql immutable;
 
 create function "slon_query" ("slon_object")
@@ -211,7 +211,7 @@ $$ language sql immutable;
 create function "slon_query" ("slon", "slon_node")
   returns setof "slon"
 as $$
-  select * from "slon" where "node" = $2 and "parent" = $1."id"
+  select * from "slon" where "node" = $2 and "related_to" = $1."id"
 $$ language sql immutable;
 
 create function "slon_query" ("slon", "slon_object")
