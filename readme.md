@@ -1,218 +1,279 @@
-# SLON: Semantically-Loose Object Network
+# SLON – Semantically-Loose Object Network
 
-SLON (Semantically-Loose Object Network) is an experimental data structure implemented as a PostgreSQL extension. It represents a tree of pairs of pairs, allowing for dynamic and pattern-matching capabilities through custom operators and functions. This document provides an overview of SLON's components, their interactions, and how to utilize them effectively.
+## Introduction
 
-## Table of Contents
-
-- [SLON: Semantically-Loose Object Network](#slon-semantically-loose-object-network)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Components](#components)
-    - [SLON Symbol](#slon-symbol)
-    - [SLON Object](#slon-object)
-    - [SLON Node](#slon-node)
-    - [SLON Tree](#slon-tree)
-  - [Operators and Functions](#operators-and-functions)
-    - [Symbol Constructor `@`](#symbol-constructor-)
-    - [Object Constructor `|`](#object-constructor-)
-    - [Node Constructor `&`](#node-constructor-)
-    - [Query Operator `?`](#query-operator-)
-  - [Special Symbols](#special-symbols)
-  - [Usage Examples](#usage-examples)
-    - [Creating Symbols](#creating-symbols)
-    - [Creating Objects](#creating-objects)
-    - [Creating Nodes](#creating-nodes)
-    - [Building a Tree](#building-a-tree)
-    - [Querying the Tree](#querying-the-tree)
-    - [Alternative Query Syntax](#alternative-query-syntax)
-  - [Pattern Matching](#pattern-matching)
-  - [Installation](#installation)
-  - [Contributing](#contributing)
-  - [License](#license)
-
-## Overview
-
-SLON is designed to represent complex relationships and hierarchies using a tree structure composed of symbols, objects, and nodes. It provides custom operators for constructing and querying the data, enabling pattern matching and flexible data manipulation.
-
-## Components
-
-### SLON Symbol
-
-A **SLON Symbol** is the most basic unit in SLON. It represents a unique identifier (string) used within objects and nodes.
-
-- **Table**: `slon_symbol`
-- **Columns**:
-  - `id`: Text (primary key)
-  - `index`: Serial number (auto-incremented)
-
-### SLON Object
-
-A **SLON Object** is a pair of symbols, consisting of a left and a right symbol.
-
-- **Table**: `slon_object`
-- **Columns**:
-  - `left`: `slon_symbol` (not null)
-  - `right`: `slon_symbol` (not null)
-  - `id`: Text (generated as `left.id || ' | ' || right.id`)
-  - `index`: Serial number
-
-### SLON Node
-
-A **SLON Node** combines an effect and an optional payload, both of which are SLON Objects.
-
-- **Table**: `slon_node`
-- **Columns**:
-  - `effect`: `slon_object` (not null)
-  - `payload`: `slon_object` (nullable)
-  - `id`: Text (generated as `effect.id || ' & ' || COALESCE(payload.id, 'null')`)
-  - `index`: Serial number
-
-### SLON Tree
-
-A **SLON Tree** organizes nodes into a hierarchical structure with parent-child relationships.
-
-- **Table**: `slon_tree`
-- **Columns**:
-  - `node`: `slon_node` (not null)
-  - `parent`: Text (references `slon_tree.id`, nullable)
-  - `id`: Text (generated as `index || '. ' || node.id`)
-  - `index`: Serial number
-
-## Operators and Functions
-
-SLON introduces custom operators and functions to simplify the creation and manipulation of its components.
-
-### Symbol Constructor `@`
-
-- **Usage**: `@'symbol_id'`
-- **Description**: Constructs or retrieves a `slon_symbol` with the given `id`.
-- **Example**: `@'A'` creates or retrieves a symbol with `id` = `'A'`.
-
-### Object Constructor `|`
-
-- **Usage**: `left_symbol | right_symbol`
-- **Description**: Constructs or retrieves a `slon_object` from two symbols.
-- **Example**: `@'A' | @'a'` creates an object with `left` = `'A'` and `right` = `'a'`.
-
-### Node Constructor `&`
-
-- **Usage**:
-  - `& object` (without payload)
-  - `effect_object & payload_object` (with payload)
-- **Description**: Constructs or retrieves a `slon_node` from one or two objects.
-- **Example**:
-  - `& ('A' | 'a')` creates a node with `effect` = `('A' | 'a')` and no `payload`.
-  - `('A' | 'a') & ('B' | 'b')` creates a node with both `effect` and `payload`.
-
-### Query Operator `?`
-
-- **Usage**:
-  - `? node_or_object`
-  - `parent_tree ? node_or_object`
-- **Description**: Queries the `slon_tree` for nodes matching the given criteria.
-- **Example**:
-  - `? ('program' | '*')` retrieves top-level nodes with `effect.left` = `'program'`.
-  - `parent_tree ? ('*' | '*')` retrieves child nodes under `parent_tree`.
-
-## Special Symbols
-
-The symbol `'*'` is a wildcard used for pattern matching. In equality comparisons:
-
-- Any symbol equals `'*'`.
-- `'*'` equals any symbol.
-- Useful for querying and pattern matching within the tree.
-
-## Usage Examples
-
-### Creating Symbols
-
-```sql
-SELECT to_json(@'A') AS result;
--- Result: { "id": "A", "index": 1 }
-```
-
-### Creating Objects
-
-```sql
-SELECT to_json('A' | 'a') AS result;
--- Result: { "id": "A | a", "index": 1, "left": { "id": "A" }, "right": { "id": "a" } }
-```
-
-### Creating Nodes
-
-```sql
--- Node with effect only
-SELECT to_json(& ('A' | 'a')) AS result;
--- Result: { "id": "A | a & null", "index": 1, "effect": { ... }, "payload": null }
-
--- Node with effect and payload
-SELECT to_json(('A' | 'a') & ('B' | 'b')) AS result;
--- Result: { "id": "A | a & B | b", "index": 2, "effect": { ... }, "payload": { ... } }
-```
-
-### Building a Tree
-
-```sql
--- Insert root node
-INSERT INTO slon_tree (node, parent)
-VALUES (& ('program' | 'A'), NULL);
-
--- Insert child node
-INSERT INTO slon_tree (node, parent)
-VALUES (('*' | '*') & ('js' | '() => {}'), '1. program | A & null');
-```
-
-### Querying the Tree
-
-```sql
--- Retrieve top-level nodes
-SELECT (? ('*' | '*')).id;
--- Returns nodes with any effect.
-
--- Query for specific program nodes
-SELECT (? ('program' | '*')).id;
--- Returns nodes where effect.left = 'program'.
-
--- Query child nodes under 'trace' nodes
-SELECT (? ('trace' | ? ('program' | '*')) ? ('*' | '*')).id;
--- Retrieves steps of all traces under any program.
-```
-
-### Alternative Query Syntax
-
-```sql
-SELECT
-    program.id AS program_id,
-    trace.id AS trace_id,
-    step.id AS step_id
-FROM
-    slon_query('program' | '*') AS program,
-    slon_query('trace' | program) AS trace,
-    slon_query(trace, '*' | '*') AS step;
-```
-
-## Pattern Matching
-
-SLON leverages the wildcard symbol `'*'` for flexible pattern matching:
-
-- **Symbols**: `@'A' = @'*'` evaluates to `TRUE`.
-- **Objects**: `('A' | '*') = ('A' | 'a')` evaluates to `TRUE`.
-- **Nodes**: `('A' | 'a') & ('*' | 'b') = ('A' | 'a') & ('B' | 'b')` evaluates to `TRUE`.
-
-This feature allows for querying and comparing components without specifying every detail.
+SLON (Semantically-Loose Object Network) is an experimental data structure implemented in PostgreSQL. It provides a flexible and dynamic way to model relationships between objects using custom PostgreSQL types, operators, and functions. SLON is designed to facilitate complex queries and pattern matching over a network of interconnected nodes, making it suitable for representing hierarchical or graph-based data within a relational database.
 
 ## Installation
 
-1. **Prerequisites**: Ensure PostgreSQL is installed.
-2. **Execute SLON SQL Script**: Run the SLON SQL definition script in your database.
+To use SLON, you need to execute the provided SQL script (`slon.sql`) in your PostgreSQL database. This script defines the custom types, functions, operators, and the main `slon` table that constitute the SLON data structure.
 
-```bash
-psql -U your_username -d your_database -f slon.sql
+```sql
+-- Execute the SLON SQL script
+\i slon.sql
 ```
 
-## Contributing
+## Concepts
 
-Contributions are welcome! Please submit issues or pull requests for enhancements or bug fixes.
+### Symbols
+
+A **Symbol** is the basic unit in SLON, identified by a text `id`. Symbols can be constructed using the `@` operator.
+
+**Creation:**
+
+```sql
+-- Create a symbol
+SELECT @'A' AS symbol;
+```
+
+**Special Symbol:**
+
+- `'*'`: A wildcard symbol that matches any symbol during equality checks.
+
+**Equality:**
+
+Two symbols are considered equal if:
+
+- Their `id`s are equal, or
+- Either symbol is the wildcard `'*'`.
+
+**Example:**
+
+```sql
+-- Symbols equality
+SELECT @'A' = @'A' AS result;  -- true
+SELECT @'A' = @'B' AS result;  -- false
+SELECT @'A' = @'*' AS result;  -- true
+```
+
+### Objects
+
+An **Object** in SLON is a pair of symbols: a `left` symbol and a `right` symbol. Objects can represent relationships or properties.
+
+**Construction:**
+
+```sql
+-- Create an object from two symbols
+SELECT @'A' | @'a' AS object;
+
+-- Simplified syntax without '@' operator
+SELECT 'A' | 'a' AS object;
+```
+
+**Equality:**
+
+Objects are equal if:
+
+- Both their `left` symbols are equal, and
+- Both their `right` symbols are equal.
+
+**Pattern Matching with Wildcards:**
+
+```sql
+-- Object equality with wildcard
+SELECT ('A' | '*') = ('A' | 'a') AS result;  -- true
+SELECT ('*' | '*') = ('B' | 'b') AS result;  -- true
+SELECT ('A' | '*') = ('B' | 'b') AS result;  -- false
+```
+
+### Nodes
+
+A **Node** is an object that may optionally have a payload (another object). Nodes represent entities with potential additional data.
+
+**Construction:**
+
+```sql
+-- Create a node with an effect and a payload
+SELECT ('A' | 'a') & ('B' | 'b') AS node;
+
+-- Create a node with only an effect
+SELECT &('A' | 'a') AS node;
+```
+
+**Equality:**
+
+Nodes are equal if:
+
+- Their effects are equal, and
+- Their payloads are equal, or
+- One of the effects is `'* | *'` and the payload is `NULL`.
+
+**Example:**
+
+```sql
+-- Nodes equality
+SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('B' | 'b') AS result;  -- true
+SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('*' | 'b') AS result;  -- true
+SELECT ('A' | 'a') & ('B' | 'b') = ('B' | 'b') & ('A' | 'a') AS result;  -- false
+```
+
+### The Network (SLON Table)
+
+The **Network** is represented by the `slon` table, which stores nodes and their relationships.
+
+**Table Structure:**
+
+```sql
+CREATE TABLE "slon" (
+  "node" "slon_node" NOT NULL,
+  "related_to" TEXT REFERENCES "slon" ("id") ON DELETE CASCADE,
+  "index" SERIAL,
+  "id" TEXT PRIMARY KEY GENERATED ALWAYS AS ("index" || '. ' || ("node")."id") STORED
+);
+```
+
+**Inserting Nodes:**
+
+- **Top-Level Node:**
+
+  ```sql
+  INSERT INTO "slon" ("node") VALUES (&('program' | 'A'));
+  ```
+
+- **Related Node:**
+
+  ```sql
+  INSERT INTO "slon" ("node", "related_to")
+  VALUES (&('trace' | 'A'), '1. program | A');
+  ```
+
+## Usage
+
+### Building the Network
+
+**Example:**
+
+```sql
+-- Insert a program node
+WITH program AS (
+  INSERT INTO "slon" ("node")
+  VALUES (&('program' | 'A'))
+  RETURNING id
+)
+-- Insert a trace node related to the program
+INSERT INTO "slon" ("node", "related_to")
+VALUES (&('trace' | 'A'), (SELECT id FROM program));
+```
+
+### Querying the Network
+
+SLON provides custom operators and functions to query nodes and their relationships.
+
+**Basic Queries:**
+
+```sql
+-- Query top-level nodes
+SELECT (? ('*' | '*')).id FROM "slon";
+
+-- Query nodes matching a specific pattern
+SELECT (? ('program' | '*')).id FROM "slon";
+```
+
+**Chained Queries:**
+
+```sql
+-- Query steps of all traces of any program
+SELECT (? ('trace' | ? ('program' | '*')) ? ('*' | '*')).id FROM "slon";
+```
+
+**Alternative Syntax:**
+
+```sql
+SELECT
+  program.id AS programId,
+  trace.id AS traceId,
+  step.id AS stepId
+FROM
+  slon_query('program' | '*') AS program,
+  slon_query('trace' | program) AS trace,
+  slon_query(trace, '*' | '*') AS step
+ORDER BY step.index;
+```
+
+### Pattern Matching with Wildcards
+
+Wildcards allow for flexible pattern matching within queries.
+
+**Example:**
+
+```sql
+-- Query nodes where the left symbol is 'A' and any right symbol
+SELECT (? ('A' | '*')).id FROM "slon";
+```
+
+## Use Cases
+
+### Simplified PostgreSQL Schema Navigation
+
+SLON can simplify navigating and querying the PostgreSQL schema.
+
+**Inserting Tables and Columns into SLON:**
+
+```sql
+WITH
+  tables AS (
+    INSERT INTO "slon" ("node")
+    SELECT ('table' | pg_class.relname) & ('oid' | pg_class.oid::text)
+    FROM pg_class
+    WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace
+    RETURNING id
+  ),
+  columns AS (
+    INSERT INTO "slon" ("node", "related_to")
+    SELECT &('column' | pg_attribute.attname), tables.id
+    FROM tables
+    JOIN pg_attribute ON (tables.node).payload.right.id = pg_attribute.attrelid::text
+    WHERE pg_attribute.attnum > 0
+    RETURNING id
+  )
+SELECT * FROM tables, columns;
+```
+
+**Querying Columns of a Specific Table:**
+
+```sql
+-- Get all columns of the 'slon' table
+SELECT ((? ('table' | 'slon') ? ('column' | '*')).node).id FROM "slon";
+```
+
+**Result:**
+
+```text
+column | node
+column | related_to
+column | index
+column | id
+```
+
+## Testing
+
+The provided test suite (`specification tests`) demonstrates various use cases and validates the behavior of the SLON data structure.
+
+**Example Test Cases:**
+
+- **Symbol Equality:**
+
+  ```sql
+  SELECT @'A' = @'A' AS result;  -- true
+  SELECT @'A' = @'*' AS result;  -- true
+  SELECT @'A' = @'B' AS result;  -- false
+  ```
+
+- **Object Equality:**
+
+  ```sql
+  SELECT (@'A' | @'a') = ('A' | 'a') AS result;  -- true
+  SELECT ('A' | '*') = ('A' | 'a') AS result;    -- true
+  SELECT ('A' | '*') = ('B' | 'b') AS result;    -- false
+  ```
+
+- **Node Equality:**
+
+  ```sql
+  SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('B' | 'b') AS result;  -- true
+  SELECT ('A' | 'a') & ('B' | 'b') = ('B' | 'b') & ('A' | 'a') AS result;  -- false
+  SELECT ('A' | 'a') & ('B' | 'b') = ('A' | 'a') & ('*' | 'b') AS result;  -- true
+  ```
 
 ## License
 
