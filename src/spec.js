@@ -111,7 +111,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
       expect(rows).toEqual([
         {
           result: {
-            id: "A | a & null",
+            id: "A | a",
             effect: expect.objectContaining({ id: "A | a" }),
             payload: null,
           },
@@ -171,20 +171,17 @@ describe("SLON – Semantically-Loose Object Network", () => {
 
     querying_starts_from_the_top_level_of_tree: {
       const { rows } = await pg.sql`select (? ('*' | '*'))."id"`;
-      expect(rows).toEqual([{ id: "1. program | A & null" }, { id: "3. trace | A & null" }]);
+      expect(rows).toEqual([{ id: "1. program | A" }, { id: "3. trace | A" }]);
     }
 
     query_for_any_program: {
       const { rows } = await pg.sql`select (? ('program' | '*'))."id"`;
-      expect(rows).toEqual([{ id: "1. program | A & null" }]);
+      expect(rows).toEqual([{ id: "1. program | A" }]);
     }
 
     query_for_steps_of_all_traces_of_any_program: {
       const { rows } = await pg.sql`select (? ('trace' | ? ('program' | '*')) ? ('*' | '*'))."id"`;
-      expect(rows).toEqual([
-        { id: "4. handle | init & null" },
-        { id: "5. skip | next & json | {}" },
-      ]);
+      expect(rows).toEqual([{ id: "4. handle | init" }, { id: "5. skip | next & json | {}" }]);
     }
 
     alternative_syntax_for_querying: {
@@ -201,13 +198,13 @@ describe("SLON – Semantically-Loose Object Network", () => {
       `;
       expect(rows).toEqual([
         {
-          programId: "1. program | A & null",
-          traceId: "3. trace | A & null",
-          stepId: "4. handle | init & null",
+          programId: "1. program | A",
+          traceId: "3. trace | A",
+          stepId: "4. handle | init",
         },
         {
-          programId: "1. program | A & null",
-          traceId: "3. trace | A & null",
+          programId: "1. program | A",
+          traceId: "3. trace | A",
           stepId: "5. skip | next & json | {}",
         },
       ]);
@@ -223,6 +220,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
               select &('table' | pg_class.relName)
                 from pg_class
                 where relKind = 'r'
+                  and relNamespace = 'public'::regNamespace
               returning *
           ),
           "~column" as (

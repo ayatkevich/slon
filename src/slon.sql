@@ -143,7 +143,7 @@ create function "slon_node_constructor" ("slon_object")
   returns "slon_node"
   returns null on null input
 as $$
-  select row ($1, null, $1."id" || ' & null')::"slon_node"
+  select row ($1, null, $1."id")::"slon_node"
 $$ language sql immutable;
 
 create function "slon_node_constructor" ("slon_object", "slon_object")
