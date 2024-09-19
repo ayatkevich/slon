@@ -168,8 +168,12 @@ create function "slon_node_equality" ("slon_node", "slon_node")
   returns boolean
 as $$
   select case
-    when ($1."effect")."id" = '* | *' and $1."payload" is null then true
-    when ($2."effect")."id" = '* | *' and $2."payload" is null then true
+    when ($1."effect")."id" = '* | *' and $1."payload" is null
+      then true
+    when ($2."effect")."id" = '* | *' and $2."payload" is null
+      then true
+    when $1."payload" is null or $2."payload" is null
+      then $1."effect" is not distinct from $2."effect"
     else $1."effect" is not distinct from $2."effect"
       and $1."payload" is not distinct from $2."payload"
   end

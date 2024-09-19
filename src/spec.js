@@ -217,7 +217,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
         with
           "~table" as (
             insert into "slon" ("node")
-              select &('table' | pg_class.relName)
+              select ('table' | pg_class.relName) & ('oid' | pg_class.oid::text)
                 from pg_class
                 where relKind = 'r'
                   and relNamespace = 'public'::regNamespace
@@ -227,10 +227,8 @@ describe("SLON – Semantically-Loose Object Network", () => {
             insert into "slon" ("node", "parent")
               select &('column' | pg_attribute.attName), "~table"."id"
                 from "~table"
-                  inner join pg_class
-                    on "~table"."node" = &('table' | pg_class.relName)
                   inner join pg_attribute
-                    on pg_class.oid = pg_attribute.attRelId
+                    on ("~table"."node")."payload" = ('oid' | pg_attribute.attRelId::text)
                 where pg_attribute.attNum > 0
               returning *
           )
@@ -239,15 +237,13 @@ describe("SLON – Semantically-Loose Object Network", () => {
 
       all_columns_of_table_slon: {
         const { rows } = await pg.sql`
-          select ((((
-            ? ('table' | 'slon') ? ('column' | '*')
-          )."node")."effect")."right")."id" as "column"
+          select ((? ('table' | 'slon') ? ('column' | '*'))."node")."id"
         `;
         expect(rows).toEqual([
-          { column: "node" },
-          { column: "parent" },
-          { column: "index" },
-          { column: "id" },
+          { id: "column | node" },
+          { id: "column | parent" },
+          { id: "column | index" },
+          { id: "column | id" },
         ]);
       }
     });
