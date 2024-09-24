@@ -185,6 +185,10 @@ create operator = (
   function = "slon_node_equality"
 );
 
+create cast ("slon_object" as "slon_node")
+  with function "slon_node_constructor" ("slon_object")
+  as implicit;
+
 
 --------------------------------------------------------------------------------
 -- SLON Query
@@ -202,43 +206,20 @@ as $$
   select * from "slon" where "node" = $1 and "related_to" is null
 $$ language sql immutable;
 
-create function "slon_query" ("slon_object")
-  returns setof "slon"
-as $$
-  select "slon_query" (&$1)
-$$ language sql immutable;
-
 create function "slon_query" ("slon", "slon_node")
   returns setof "slon"
 as $$
   select * from "slon" where "node" = $2 and "related_to" = $1."id"
 $$ language sql immutable;
 
-create function "slon_query" ("slon", "slon_object")
-  returns setof "slon"
-as $$
-  select * from "slon_query" ($1, &$2)
-$$ language sql immutable;
-
 create operator ? (
   rightArg = "slon_node",
   function = "slon_query"
 );
 
 create operator ? (
-  rightArg = "slon_object",
-  function = "slon_query"
-);
-
-create operator ? (
   leftArg = "slon",
   rightArg = "slon_node",
-  function = "slon_query"
-);
-
-create operator ? (
-  leftArg = "slon",
-  rightArg = "slon_object",
   function = "slon_query"
 );
 
@@ -292,4 +273,42 @@ create operator | (
   leftArg = "slon",
   rightArg = "slon_symbol",
   function = "slon_object_constructor"
+);
+
+create function "slon_write" ("slon_node")
+  returns "slon"
+  returns null on null input
+as $$
+  insert into "slon" ("node") values ($1) returning *
+$$ language sql volatile;
+
+create function "slon_write" ("slon", "slon_node")
+  returns "slon"
+  returns null on null input
+as $$
+  insert into "slon" ("related_to", "node") values ($1."id", $2) returning *
+$$ language sql volatile;
+
+create function "slon_write" ("slon", "slon_node"[])
+  returns setof "slon"
+  returns null on null input
+as $$
+  select "slon_write" ($1, unnest ($2))
+$$ language sql volatile;
+
+create operator + (
+  rightArg = "slon_node",
+  function = "slon_write"
+);
+
+create operator + (
+  leftArg = "slon",
+  rightArg = "slon_node",
+  function = "slon_write"
+);
+
+create operator + (
+  leftArg = "slon",
+  rightArg = "slon_node"[],
+  function = "slon_write"
 );

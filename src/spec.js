@@ -140,33 +140,17 @@ describe("SLON – Semantically-Loose Object Network", () => {
 
   test("network", async () => {
     await pg.sql`
-      with
-        "_0" as (
-          insert into "slon" ("node", "related_to")
-            values (&('program' | 'A'), null)
-            returning *
-        ),
-        "_1" as (
-          insert into "slon" ("node", "related_to")
-            values (('*' | '*') & ('js' | '() => {}'), (select "id" from "_0"))
-            returning *
-        ),
-        "_2" as (
-          insert into "slon" ("node", "related_to")
-            values (&('trace' | 'A'), null)
-            returning *
-        ),
-        "_3" as (
-          insert into "slon" ("node", "related_to")
-            values (&('handle' | 'init'), (select "id" from "_2"))
-            returning *
-        ),
-        "_4" as (
-          insert into "slon" ("node", "related_to")
-            values (('skip' | 'next') & ('json' | '{}'), (select "id" from "_2"))
-            returning *
-        )
-      select * from "_0", "_1", "_2", "_3", "_4"
+      select
+        + ('program' | 'A')
+          + (('*' | '*') & ('js' | '() => {}'))
+    `;
+    await pg.sql`
+      select
+        + ('trace' | 'A')
+          + array[
+            ('handle' | 'init'),
+            ('skip' | 'next') & ('json' | '{}')
+          ]
     `;
 
     querying_starts_from_the_top_level_of_tree: {
