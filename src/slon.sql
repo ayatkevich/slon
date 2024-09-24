@@ -314,7 +314,7 @@ create operator + (
 );
 
 create function "slon_delete" ("slon")
-  returns void
+  returns "slon"
   returns null on null input
 as $$
   delete from "slon" where "id" = $1."id" returning *

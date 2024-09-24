@@ -194,13 +194,12 @@ describe("SLON – Semantically-Loose Object Network", () => {
     }
 
     deleting_transitions_from_program: {
-      await pg.sql`
-        select
-          - (? ('program' | 'A') ? ('*' | '*'))
-      `;
-      const { rows } = await pg.sql`
-        select (? ('program' | 'A') ? ('*' | '*'))."id"
-      `;
+      const { rows } = await pg.sql`select (- (? ('program' | 'A') ? ('*' | '*')))."id"`;
+      expect(rows).toEqual([{ id: "2. * | * & js | () => {}" }]);
+    }
+
+    there_should_be_no_transitions_left: {
+      const { rows } = await pg.sql`select (? ('program' | 'A') ? ('*' | '*'))."id"`;
       expect(rows).toEqual([]);
     }
 
@@ -210,9 +209,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
           (? ('program' | 'A'))
             + (('@' | 'init') & ('js' | '() => {}'))
       `;
-      const { rows } = await pg.sql`
-        select (? ('program' | 'A') ? ('*' | '*'))."id"
-      `;
+      const { rows } = await pg.sql`select (? ('program' | 'A') ? ('*' | '*'))."id"`;
       expect(rows).toEqual([{ id: "6. @ | init & js | () => {}" }]);
     }
   });
