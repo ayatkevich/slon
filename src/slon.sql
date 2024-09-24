@@ -275,40 +275,52 @@ create operator | (
   function = "slon_object_constructor"
 );
 
-create function "slon_write" ("slon_node")
+create function "slon_append" ("slon_node")
   returns "slon"
   returns null on null input
 as $$
   insert into "slon" ("node") values ($1) returning *
 $$ language sql volatile;
 
-create function "slon_write" ("slon", "slon_node")
+create function "slon_append" ("slon", "slon_node")
   returns "slon"
   returns null on null input
 as $$
   insert into "slon" ("related_to", "node") values ($1."id", $2) returning *
 $$ language sql volatile;
 
-create function "slon_write" ("slon", "slon_node"[])
+create function "slon_append" ("slon", "slon_node"[])
   returns setof "slon"
   returns null on null input
 as $$
-  select "slon_write" ($1, unnest ($2))
+  select "slon_append" ($1, unnest ($2))
 $$ language sql volatile;
 
 create operator + (
   rightArg = "slon_node",
-  function = "slon_write"
+  function = "slon_append"
 );
 
 create operator + (
   leftArg = "slon",
   rightArg = "slon_node",
-  function = "slon_write"
+  function = "slon_append"
 );
 
 create operator + (
   leftArg = "slon",
   rightArg = "slon_node"[],
-  function = "slon_write"
+  function = "slon_append"
+);
+
+create function "slon_delete" ("slon")
+  returns void
+  returns null on null input
+as $$
+  delete from "slon" where "id" = $1."id" returning *
+$$ language sql volatile;
+
+create operator - (
+  rightArg = "slon",
+  function = "slon_delete"
 );

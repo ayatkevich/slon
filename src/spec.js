@@ -143,13 +143,12 @@ describe("SLON – Semantically-Loose Object Network", () => {
       select
         + ('program' | 'A')
           + (('*' | '*') & ('js' | '() => {}'))
-    `;
-    await pg.sql`
+      union
       select
         + ('trace' | 'A')
           + array[
             ('handle' | 'init'),
-            ('skip' | 'next') & ('json' | '{}')
+            ('bypass' | 'next') & ('json' | '{}')
           ]
     `;
 
@@ -165,7 +164,7 @@ describe("SLON – Semantically-Loose Object Network", () => {
 
     query_for_steps_of_all_traces_of_any_program: {
       const { rows } = await pg.sql`select (? ('trace' | ? ('program' | '*')) ? ('*' | '*'))."id"`;
-      expect(rows).toEqual([{ id: "4. handle | init" }, { id: "5. skip | next & json | {}" }]);
+      expect(rows).toEqual([{ id: "4. handle | init" }, { id: "5. bypass | next & json | {}" }]);
     }
 
     alternative_syntax_for_querying: {
@@ -189,9 +188,32 @@ describe("SLON – Semantically-Loose Object Network", () => {
         {
           programId: "1. program | A",
           traceId: "3. trace | A",
-          stepId: "5. skip | next & json | {}",
+          stepId: "5. bypass | next & json | {}",
         },
       ]);
+    }
+
+    deleting_transitions_from_program: {
+      await pg.sql`
+        select
+          - (? ('program' | 'A') ? ('*' | '*'))
+      `;
+      const { rows } = await pg.sql`
+        select (? ('program' | 'A') ? ('*' | '*'))."id"
+      `;
+      expect(rows).toEqual([]);
+    }
+
+    appending_transition_to_program: {
+      await pg.sql`
+        select
+          (? ('program' | 'A'))
+            + (('@' | 'init') & ('js' | '() => {}'))
+      `;
+      const { rows } = await pg.sql`
+        select (? ('program' | 'A') ? ('*' | '*'))."id"
+      `;
+      expect(rows).toEqual([{ id: "6. @ | init & js | () => {}" }]);
     }
   });
 
