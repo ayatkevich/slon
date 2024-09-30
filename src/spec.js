@@ -1,10 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
-import { readFile } from "fs/promises";
+import { definition } from "./index.js";
 
 describe("SLON – Semantically-Loose Object Network", () => {
   const pg = new PGlite();
-  beforeAll(async () => pg.exec(await readFile("./src/slon.sql", "utf-8")));
+  beforeAll(async () => pg.exec(definition));
   afterAll(() => pg.close());
 
   test("symbol", async () => {
