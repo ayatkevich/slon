@@ -13,6 +13,16 @@ To use SLON, you need to execute the provided SQL script (`slon.sql`) in your Po
 \i slon.sql
 ```
 
+You can also install the package from npm:
+
+```bash
+npm install @ayatkevich/slon
+```
+
+It exports the `definitionPath` and `definition` variables.
+
+`definitionPath` is the path to the SLON SQL script, and `definition` is the SQL script as a string.
+
 ## Concepts
 
 ### Symbols

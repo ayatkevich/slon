@@ -1,7 +1,7 @@
 {
   "type": "module",
   "private": false,
-  "name": "pg-slon",
+  "name": "@ayatkevich/slon",
   "version": "0.2.0",
   "author": "Alex Yatkevich",
   "license": "MIT",
