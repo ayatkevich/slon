@@ -4,4 +4,6 @@ import { fileURLToPath } from "url";
 
 const dirname = fileURLToPath(new URL(".", import.meta.url));
 
-export const definition = await readFile(path.join(dirname, "slon.sql"), "utf8");
+export const definitionPath = path.join(dirname, "slon.sql");
+
+export const definition = await readFile(definitionPath, "utf8");

@@ -7,6 +7,10 @@ describe("SLON – Semantically-Loose Object Network", () => {
   beforeAll(async () => pg.exec(definition));
   afterAll(() => pg.close());
 
+  test("idempotence", async () => {
+    await pg.exec(definition);
+  });
+
   test("symbol", async () => {
     add_some_symbols: {
       const { rows } = await pg.sql`select to_json(@'A') as "result"`;
