@@ -219,6 +219,8 @@ SLON can simplify navigating and querying the PostgreSQL schema.
 
 **Inserting Tables and Columns into SLON:**
 
+<!-- cspell:disable -->
+
 ```sql
 WITH
   tables AS (
@@ -238,6 +240,8 @@ WITH
   )
 SELECT * FROM tables, columns;
 ```
+
+<!-- cspell:enable -->
 
 **Querying Columns of a Specific Table:**
 
