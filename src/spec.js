@@ -216,6 +216,12 @@ describe("SLON – Semantically-Loose Object Network", () => {
       const { rows } = await pg.sql`select (? ('program' | 'A') ? ('*' | '*'))."id"`;
       expect(rows).toEqual([{ id: "6. @ | init & js | () => {}" }]);
     }
+
+    delete_everything: {
+      await pg.sql`select - ('*' | '*')`;
+      const { rows } = await pg.sql`select * from "slon"`;
+      expect(rows).toEqual([]);
+    }
   });
 
   describe("use cases", () => {

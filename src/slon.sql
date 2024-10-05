@@ -346,8 +346,21 @@ as $$
   delete from "slon" where "id" = $1."id" returning *
 $$ language sql volatile;
 
+create or replace function "slon_delete" ("slon_object")
+  returns setof "slon"
+  returns null on null input
+as $$
+  delete from "slon" where "node" = $1 returning *
+$$ language sql volatile;
+
 drop operator if exists - (none, "slon");
 create operator - (
   rightArg = "slon",
+  function = "slon_delete"
+);
+
+drop operator if exists - (none, "slon_object");
+create operator - (
+  rightArg = "slon_object",
   function = "slon_delete"
 );
